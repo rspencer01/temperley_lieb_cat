@@ -1,66 +1,7 @@
 extern crate partitions;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum Site {
-    Source(usize),
-    Target(usize),
-}
-
-impl std::fmt::Debug for Site {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self)
-    }
-}
-
-impl std::fmt::Display for Site {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Source(i) => write!(f, "{}·", i),
-            Target(i) => write!(f, "·{}", i),
-        }
-    }
-}
-
-impl Site {
-    fn involute(self) -> Site {
-        match self {
-            Source(i) => Target(i),
-            Target(i) => Source(i),
-        }
-    }
-}
-
-use Site::*;
-
-#[derive(Copy, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
-pub struct Link(pub Site, pub Site);
-
-impl std::fmt::Debug for Link {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self)
-    }
-}
-
-impl std::fmt::Display for Link {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f,"{}—{}", self.0, self.1)
-    }
-}
-
-impl Link {
-    pub fn new(site_a : Site, site_b : Site) -> Link {
-        match (site_a, site_b) {
-            (Source(i), Source(j)) => Link(Source(usize::min(i, j)), Source(usize::max(i, j))),
-            (Target(i), Target(j)) => Link(Target(usize::min(i, j)), Target(usize::max(i, j))),
-            (Source(i), Target(j)) => Link(Source(i), Target(j)),
-            (Target(i), Source(j)) => Link(Source(j), Target(i)),
-        }
-    }
-
-    fn involute(self) -> Link {
-        Link::new(self.0.involute(), self.1.involute())
-    }
-}
+use crate::temperley_site::{Site, Site::*};
+use crate::temperley_link::Link;
 
 #[derive(Clone)]
 pub struct TLDiagram(Vec<Link>);
@@ -92,9 +33,11 @@ impl TLDiagram {
         TLDiagram(lnk)
     }
 
-    pub fn from_tableaux(n : usize, tab : Vec<usize>) -> TLDiagram {
+    pub fn from_tableaux<I>(n : usize, tab : I) -> TLDiagram
+    where I : Iterator<Item=usize> {
         let mut stack = Vec::new();
         let mut links = Vec::new();
+        let tab = tab.collect::<Vec<_>>();
         for i in 1..n+1 {
             if tab.contains(&i) {
                 links.push(Link::new(Source(stack.pop().unwrap()), Source(i)));
@@ -108,12 +51,13 @@ impl TLDiagram {
         TLDiagram::new(links)
     }
 
-    pub fn from_tableauxs(n : usize, tab1 : Vec<usize>, tab2 : Vec<usize>) -> TLDiagram {
+    pub fn from_tableauxs<I>(n : usize, tab1 : I, tab2 : I) -> TLDiagram
+    where I : Iterator<Item=usize> {
         (TLDiagram::from_tableaux(n, tab1) * TLDiagram::from_tableaux(n, tab2).involute()).1
     }
 
     pub fn u(n :usize, i : usize) -> TLDiagram {
-        TLDiagram::from_tableauxs(n, vec![i+1], vec![i+1])
+        TLDiagram::from_tableauxs(n, i+1..i+2, i+1..i+2)
     }
 
     pub fn domain(&self) -> usize {
@@ -155,7 +99,7 @@ impl TLDiagram {
         TLDiagram::cap(n,i).involute()
     }
 
-    pub fn identity(n: usize) -> TLDiagram {
+    pub fn id(n: usize) -> TLDiagram {
         TLDiagram::new((1..n+1).map(|j| Link::new(Source(j), Target(j))).collect())
     }
 
@@ -163,6 +107,18 @@ impl TLDiagram {
         let mut links = self.0.clone();
         links.push(Link::new(Source(self.domain()+1), Target(self.co_domain()+1)));
         TLDiagram::new(links)
+    }
+
+    pub fn any(n : usize, m : usize) -> TLDiagram {
+        if n < m {
+            TLDiagram::any(m,n).involute()
+        } else {
+            let mut v = Vec::new();
+            for i in 0..(n - m)/2 {
+                v.push(i*2 + 2);
+            }
+            TLDiagram::from_tableaux(n,v.into_iter())
+        }
     }
 
     pub fn link(&self, site: Site) -> Site {
@@ -261,6 +217,20 @@ impl std::ops::Mul for TLDiagram {
     }
 }
 
+impl std::ops::BitOr for TLDiagram {
+    type Output = TLDiagram;
+
+    fn bitor(mut self, other: TLDiagram) -> TLDiagram {
+        let n = self.domain();
+        let m = self.co_domain();
+        for lnk in other.0.iter() {
+            self.0.push(lnk.shift(n,m));
+        }
+        self.0.sort();
+        self
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -277,7 +247,7 @@ mod tests {
 
     #[test]
     fn from_tableaux() {
-        debug_assert_eq!(TLDiagram::cap(10,3), TLDiagram::from_tableaux(10, vec![4]));
+        debug_assert_eq!(TLDiagram::cap(10,3), TLDiagram::from_tableaux(10, vec![4].into_iter()));
     }
 
     #[test]
@@ -288,5 +258,20 @@ mod tests {
         debug_assert_eq!(a , (0, TLDiagram::new(vec![Link::new(Source(1), Source(2)),Link::new(Source(3), Target(3)),Link::new(Source(4), Target(4)),Link::new(Target(1), Target(2))])));
         let a = TLDiagram::cup(4,1) * TLDiagram::cap(4,1);
         debug_assert_eq!(a , (1, TLDiagram::new(vec![Link::new(Source(1), Target(1)),Link::new(Source(2), Target(2))])));
+    }
+
+    #[test]
+    fn inject() {
+        let a = (TLDiagram::cap(4,1) * TLDiagram::cup(4,2)).1;
+        debug_assert_eq!(a.inject(), a | TLDiagram::id(1));
+    }
+
+    #[test]
+    fn any() {
+        debug_assert_eq!(TLDiagram::any(5,3), TLDiagram::from_tableaux(5, vec![2].into_iter()));
+        debug_assert_eq!(TLDiagram::any(15,5).domain(), 15);
+        debug_assert_eq!(TLDiagram::any(15,5).co_domain(), 5);
+        debug_assert_eq!(TLDiagram::any(16,12).domain(), 16);
+        debug_assert_eq!(TLDiagram::any(16,12).co_domain(), 12);
     }
 }

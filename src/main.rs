@@ -5,6 +5,8 @@ mod gcd;
 mod poly;
 mod temperley;
 mod temperley_diagram;
+mod temperley_site;
+mod temperley_link;
 
 use temperley::jw;
 
