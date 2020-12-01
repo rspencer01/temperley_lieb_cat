@@ -67,12 +67,12 @@ impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug> TLMorphism<R> {
         )
     }
 
-    fn identity(n : usize) -> TLMorphism<R> {
-        TLDiagram::identity(n).into()
+    fn id(n : usize) -> TLMorphism<R> {
+        TLDiagram::id(n).into()
     }
 
     fn zero(n : usize) -> TLMorphism<R> {
-        TLMorphism::identity(n) * R::zero()
+        TLMorphism::id(n) * R::zero()
     }
 
     fn u(n : usize, i : usize) -> TLMorphism<R> {
@@ -90,7 +90,7 @@ impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug> TLMorphism<R> {
 
     pub fn is_jones_wenzl(&self) -> bool {
         self.domain() == self.co_domain() &&
-            (self.coeffs.get(&TLDiagram::identity(self.domain())).unwrap_or(&R::zero()).is_one()) &&
+            (self.coeffs.get(&TLDiagram::id(self.domain())).unwrap_or(&R::zero()).is_one()) &&
             (1..self.domain()).all(|i|
             (TLMorphism::<R>::u(self.domain(),i) * self.clone()).is_zero())
     }
@@ -108,7 +108,7 @@ impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug> TLMorphism<R> {
 }
 
 pub fn jw(n : usize) -> TLMorphism<Fraction<Polynomial<i128>>> {
-    let mut jw = TLMorphism::identity(1);
+    let mut jw = TLMorphism::id(1);
     jw.repoint(Polynomial::gen().into());
     for i in 1..n {
         let jwp = jw.inject();
@@ -118,7 +118,7 @@ pub fn jw(n : usize) -> TLMorphism<Fraction<Polynomial<i128>>> {
 }
 
 pub fn jw_nat(n : usize) -> TLMorphism<Fraction<i128>> {
-    let mut jw = TLMorphism::identity(1);
+    let mut jw = TLMorphism::id(1);
     jw.repoint(2.into());
     for i in 1..n {
         let jwp = jw.inject();
@@ -195,7 +195,7 @@ impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug> std::ops::Mul f
     type Output = TLMorphism<R>;
 
     fn mul(self, other: TLMorphism<R>) -> TLMorphism<R> {
-        let mut ans = TLMorphism::new(vec![(self.coeffs.keys().next().unwrap().clone(), R::zero())], self.delta);
+        let mut ans = TLMorphism::new(vec![(TLDiagram::any(self.domain(), self.co_domain()), R::zero())], self.delta);
         let delta = self.ring_point(&other).expect("Require ring point to multiply morphisms");
         let mut pows = vec![R::one(); (self.domain() + self.co_domain()) / 2];
         for i in 1.. pows.len() {
@@ -206,6 +206,26 @@ impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug> std::ops::Mul f
                 other.coeffs.iter().map(|(dp, vp)|{
                     let m = d.clone() * dp.clone();
                     (m.1, pows[m.0] * *v * *vp)
+                }).collect(),
+                Some(delta)
+            )
+        }
+        ans
+    }
+}
+
+impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug> std::ops::BitOr for TLMorphism<R> {
+    type Output = TLMorphism<R>;
+
+    fn bitor(self, other: TLMorphism<R>) -> TLMorphism<R> {
+        let mut ans = TLMorphism::new(vec![
+            (TLDiagram::any(self.domain() + other.domain(), self.co_domain()+other.co_domain()), R::zero())
+        ], self.delta);
+        let delta = self.ring_point(&other).expect("Require ring point to multiply morphisms");
+        for (d, v) in self.coeffs.iter() {
+            ans = ans + TLMorphism::new(
+                other.coeffs.iter().map(|(dp, vp)|{
+                    (d.clone() | dp.clone(), *v * *vp)
                 }).collect(),
                 Some(delta)
             )
@@ -267,24 +287,25 @@ mod tests {
     use crate::poly::{quantum, Polynomial};
     use crate::fraction::Fraction;
     use crate::num::One;
-    use crate::temperley_diagram::{Link, Site::*};
+    use crate::temperley_link::Link;
+    use crate::temperley_site::Site::*;
 
     #[test]
     fn equality() {
         debug_assert_eq!(TLMorphism::new(vec![
-            (TLDiagram::identity(3), 1),
+            (TLDiagram::id(3), 1),
             (TLDiagram::from_tableauxs(3, vec![2], vec![2]), -1),
         ], None),
         TLMorphism::new(vec![
-            (TLDiagram::identity(3), 1),
+            (TLDiagram::id(3), 1),
             (TLDiagram::new(vec![Link::new(Source(1), Source(2)), Link::new(Target(1), Target(2)), Link::new(Target(3), Source(3))]), -1),
         ], None));
         debug_assert_eq!(TLMorphism::new(vec![
-            (TLDiagram::identity(3), 1),
+            (TLDiagram::id(3), 1),
             (TLDiagram::from_tableauxs(3,vec![2], vec![2]), -1),
         ], None),
         TLMorphism::new(vec![
-            (TLDiagram::identity(3), 1),
+            (TLDiagram::id(3), 1),
             (TLDiagram::from_tableauxs(3,vec![2], vec![2]), -1),
             (TLDiagram::from_tableauxs(3,vec![3], vec![2]), 0),
         ], None));
@@ -294,15 +315,15 @@ mod tests {
     fn add() {
         debug_assert_eq!(TLMorphism::<i128>::zero(5) + TLMorphism::zero(5), TLMorphism::zero(5));
         debug_assert_ne!(TLMorphism::<i128>::zero(5) + TLMorphism::zero(5), TLMorphism::zero(6));
-        debug_assert_eq!(TLMorphism::<i128>::zero(5) + TLMorphism::identity(5), TLMorphism::identity(5));
-        debug_assert_eq!(TLMorphism::<i128>::identity(5) + TLMorphism::zero(5), TLMorphism::identity(5));
+        debug_assert_eq!(TLMorphism::<i128>::zero(5) + TLMorphism::id(5), TLMorphism::id(5));
+        debug_assert_eq!(TLMorphism::<i128>::id(5) + TLMorphism::zero(5), TLMorphism::id(5));
     }
 
     #[test]
     fn mul() {
         debug_assert_eq!(
             TLMorphism::zero(6),
-            TLMorphism::identity(6) * (0 as i128)
+            TLMorphism::id(6) * (0 as i128)
         );
         type R = Fraction<Polynomial<i128>>;
         let delta = Fraction::from(Polynomial::gen());
@@ -319,7 +340,7 @@ mod tests {
         type R = Fraction<Polynomial<i128>>;
         let delta : R = Polynomial::gen().into();
         let jw3 = TLMorphism::new(vec![
-            (TLDiagram::identity(3), R::one()),
+            (TLDiagram::id(3), R::one()),
             (TLDiagram::from_tableauxs(3,vec![2], vec![2]), -R::from(quantum(2)) / quantum(3)),
             (TLDiagram::from_tableauxs(3,vec![3], vec![3]), -R::from(quantum(2)) / quantum(3)),
             (TLDiagram::from_tableauxs(3,vec![2], vec![3]), R::from(quantum(1)) / quantum(3)),
@@ -340,7 +361,7 @@ mod tests {
     #[test]
     fn general_jw() {
         type R = Fraction<Polynomial<i128>>;
-        let mut jw1 = TLMorphism::<R>::identity(1);
+        let mut jw1 = TLMorphism::<R>::id(1);
         jw1.repoint(Polynomial::gen().into());
         assert!(jw(1).is_jones_wenzl());
         assert!(jw(2).is_jones_wenzl());
@@ -348,5 +369,15 @@ mod tests {
         assert!(jw(4).is_jones_wenzl());
         assert!(jw(5).is_jones_wenzl());
         assert!(jw(4).inject() * jw(5) == jw(5));
+    }
+
+    #[test]
+    fn tensored_jw() {
+        assert!((jw(4) | jw(3)).is_idempotent());
+        assert!((jw(3) | jw(2) | jw(3)).is_idempotent()); 
+        assert!(!((jw(3) | jw(2) | jw(3)).is_jones_wenzl()));
+        assert!((jw(5) | jw(1)).is_idempotent());
+        assert!(!(jw(5) | jw(1)).is_jones_wenzl());
+        assert!((jw(4) | jw(2)) * jw(6) == jw(6));
     }
 }
