@@ -263,6 +263,10 @@ impl Tex for TLDiagram {
         ans += "\\end{tikzpicture} } }";
         ans
     }
+
+    fn is_multiterm(&self) -> bool {
+        false
+    }
 }
 
 #[cfg(test)]

@@ -305,9 +305,42 @@ where T: Num + GCD + Copy + std::fmt::Display {
 }
 
 impl<T> Tex for Polynomial<T>
-where T: Num + GCD + Copy + std::fmt::Display {
+where T: Num + GCD + Copy + std::fmt::Display + num::Signed + Tex {
     fn into_tex(&self) -> String {
-        format!("{}", self)
+        let mut ans = String::new();
+        let mut s = false;
+        for i in 0..self.degree().max(0)+1 {
+            if !self.coeffs[i].is_zero() || (i == 0 && self.degree() == 0) {
+                if s {
+                    if self.coeffs[i].is_positive() {
+                        ans += " + ";
+                    }
+                }
+                s = true;
+                if !self.coeffs[i].abs().is_one() || i == 0 {
+                    if self.coeffs[i].is_multiterm() {
+                        ans += "\\left(";
+                    }
+                    ans += &self.coeffs[i].into_tex();
+                    if self.coeffs[i].is_multiterm() {
+                        ans += "\\right)";
+                    }
+                }
+                if self.coeffs[i].is_negative() && (-self.coeffs[i]).is_one() && i > 0 {
+                    ans += " - ";
+                }
+                if i > 1 {
+                    ans += &format!("X^{{ {} }}", i);
+                } else if i == 1 {
+                    ans += "X";
+                }
+            }
+        }
+        ans
+    }
+
+    fn is_multiterm(&self) -> bool {
+        self.degree() > 0
     }
 }
 

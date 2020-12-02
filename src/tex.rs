@@ -4,6 +4,8 @@ use std::process::{Command, Stdio};
 pub trait Tex {
     fn into_tex(&self) -> String;
 
+    fn is_multiterm(&self) -> bool;
+
     fn render_tex(&self) {
         let document = format!(
     "\\documentclass[crop=true]{{standalone}}
@@ -30,5 +32,16 @@ pub trait Tex {
             .write_all(&document.into_bytes())
             .expect("Can't write tex to pdflatex");
         command.wait().expect("Cannot await task");
+    }
+}
+
+
+impl Tex for i128 {
+    fn into_tex(&self) -> String {
+        format!("{}",self)
+    }
+
+    fn is_multiterm(&self) -> bool {
+        false
     }
 }

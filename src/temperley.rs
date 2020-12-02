@@ -292,10 +292,20 @@ impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug + Tex> Tex for T
             if !ans.is_empty() {
                 ans += " + ";
             }
+            if v.is_multiterm() {
+                ans += "\\left(";
+            }
             ans += &v.into_tex();
+            if v.is_multiterm() {
+                ans += "\\right)";
+            }
             ans += &k.into_tex();
         }
         ans
+    }
+
+    fn is_multiterm(&self) -> bool {
+        self.coeffs.values().filter(|x| !x.is_zero()).count() > 1
     }
 }
 

@@ -174,6 +174,18 @@ where T : std::fmt::Display + Num + GCD + Copy {
 impl<T> Tex for Fraction<T>
 where T : Copy + Num + GCD + Tex {
     fn into_tex(&self) -> String {
-        format!("\\frac{{ {} }}{{ {} }}", self.num.into_tex(), self.den.into_tex())
+        if self.den.is_one() {
+            self.num.into_tex()
+        } else {
+            format!("\\frac{{ {} }}{{ {} }}", self.num.into_tex(), self.den.into_tex())
+        }
+    }
+
+    fn is_multiterm(&self) -> bool {
+        if self.den.is_one() {
+            self.num.is_multiterm()
+        } else {
+            false
+        }
     }
 }

@@ -15,6 +15,7 @@ use poly::{quantum, Polynomial};
 use fraction::Fraction;
 
 use tex::Tex;
+use num::Zero;
 
 fn main() {
     type R = Fraction<Polynomial<i128>>;
