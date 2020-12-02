@@ -2,6 +2,7 @@ use num::Num;
 
 use crate::gcd::GCD;
 use crate::num::{One, Zero};
+use crate::tex::Tex;
 
 const MAX_DEGREE : usize = 256;
 
@@ -279,7 +280,9 @@ where T: Num + GCD + Copy + std::fmt::Display {
                     write!(f, " + ")?;
                 }
                 s = true;
-                write!(f, "{}", self.coeffs[i])?;
+                if !self.coeffs[i].is_one() || i == 0 {
+                    write!(f, "{}", self.coeffs[i])?;
+                }
                 if i > 1 {
                     write!(f, "X^{}", i)?;
                 } else if i == 1 {
@@ -295,6 +298,13 @@ impl<T> std::fmt::Debug for Polynomial<T>
 where T: Num + GCD + Copy + std::fmt::Display {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self)
+    }
+}
+
+impl<T> Tex for Polynomial<T>
+where T: Num + GCD + Copy + std::fmt::Display {
+    fn into_tex(&self) -> String {
+        format!("{}", self)
     }
 }
 

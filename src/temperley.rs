@@ -3,6 +3,7 @@ use crate::temperley_diagram::TLDiagram;
 use crate::poly::{quantum, Polynomial};
 use crate::fraction::Fraction;
 use crate::num::{Num, Zero};
+use crate::tex::Tex;
 
 #[derive(Clone, Debug)]
 pub struct TLMorphism<R>
@@ -280,6 +281,19 @@ impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug> num::Zero for T
     }
 }
 
+impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug + Tex> Tex for TLMorphism<R> {
+    fn into_tex(&self) -> String {
+        let mut ans = String::new();
+        for (k,v) in self.coeffs.iter() {
+            if !ans.is_empty() {
+                ans += " + ";
+            }
+            ans += &v.into_tex();
+            ans += &k.into_tex();
+        }
+        ans
+    }
+}
 
 #[cfg(test)]
 mod tests {

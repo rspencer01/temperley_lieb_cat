@@ -1,6 +1,7 @@
 use num::{Zero, Num};
 
 use crate::gcd::GCD;
+use crate::tex::Tex;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Fraction<T : Copy + Num + GCD> {
@@ -167,5 +168,12 @@ impl<T> std::fmt::Display for Fraction<T>
 where T : std::fmt::Display + Num + GCD + Copy {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "({})/({})", self.num, self.den)
+    }
+}
+
+impl<T> Tex for Fraction<T>
+where T : Copy + Num + GCD + Tex {
+    fn into_tex(&self) -> String {
+        format!("\\frac{{ {} }}{{ {} }}", self.num.into_tex(), self.den.into_tex())
     }
 }

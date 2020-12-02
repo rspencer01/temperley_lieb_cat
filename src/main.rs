@@ -7,6 +7,7 @@ mod temperley;
 mod temperley_diagram;
 mod temperley_site;
 mod temperley_link;
+mod tex;
 
 use temperley::jw;
 
