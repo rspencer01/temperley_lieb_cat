@@ -144,6 +144,9 @@ where T : Num + GCD + Copy {
     type Output = Self;
 
     fn mul(self, other: T) -> Self {
+        if other.is_one() {
+            return self
+        }
         let mut ans = self.coeffs;
         for i in 0..self.degree()+1 {
             ans[i] = ans[i] * other;

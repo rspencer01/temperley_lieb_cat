@@ -68,7 +68,7 @@ impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug> TLMorphism<R> {
         )
     }
 
-    fn id(n : usize) -> TLMorphism<R> {
+    pub fn id(n : usize) -> TLMorphism<R> {
         TLDiagram::id(n).into()
     }
 
@@ -76,8 +76,12 @@ impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug> TLMorphism<R> {
         TLMorphism::id(n) * R::zero()
     }
 
-    fn u(n : usize, i : usize) -> TLMorphism<R> {
+    pub fn u(n : usize, i : usize) -> TLMorphism<R> {
         TLDiagram::u(n,i).into()
+    }
+
+    pub fn U(n : usize, i : usize, j : usize) -> TLMorphism<R> {
+        TLDiagram::U(n,i, j).into()
     }
 
     fn inject(&self) -> TLMorphism<R> {

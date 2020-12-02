@@ -61,6 +61,10 @@ impl TLDiagram {
         TLDiagram::from_tableauxs(n, i+1..i+2, i+1..i+2)
     }
 
+    pub fn U(n :usize, i : usize, j : usize) -> TLDiagram {
+        TLDiagram::from_tableauxs(n, i+1..i+1+j, i+1..i+1 + j)
+    }
+
     pub fn domain(&self) -> usize {
         self.0.iter()
             .map(|x|
@@ -86,14 +90,7 @@ impl TLDiagram {
     }
 
     pub fn cap(n: usize, i: usize) -> TLDiagram {
-        let mut ans : Vec<Link> = (1..(i))
-                    .map(|j| Link::new(Source(j), Target(j)))
-                    .chain((i+2..n+1)
-                        .map(|j| Link::new(Source(j), Target(j-2)))
-                    )
-                    .collect();
-        ans.push(Link::new(Source(i), Source(i+1)));
-        TLDiagram::new(ans)
+        TLDiagram::from_tableaux(n, i+1..i+2)
     }
 
     pub fn cup(n: usize, i: usize) -> TLDiagram {
