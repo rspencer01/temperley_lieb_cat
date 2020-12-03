@@ -33,4 +33,18 @@ fn main() {
         phi[k+1].clone() * Fraction::from(quantum(n1-k as i128) * quantum(n2-k as i128)),
         (phi[1].clone() - TLMorphism::<R>::id((n1+n2) as usize) * Fraction::from(quantum(k as i128) * quantum(n1+n2-k as i128+1))) * phi[k].clone());
     }
+    assert!(
+        ((phi[1].clone() - TLMorphism::<R>::id((n1+n2) as usize) * Fraction::from(quantum(n1) * quantum(n2+1))) * phi[n1 as usize].clone()).is_zero()
+    );
+
+    let mut t = TLMorphism::id((n1+n2) as usize);
+    for i in 0..n1+1 {
+        println!("Adding term {}", i);
+        t = t * (phi[1].clone() - TLMorphism::<R>::id((n1+n2) as usize) * Fraction::from(quantum(i) * quantum(n1+n2-i+1)));
+    }
+    let zero = TLMorphism::id((n1+n2) as usize) * Fraction::zero();
+    //assert_ne!(t.clone(), zero.clone());
+    t.render_tex();
+    assert_eq!(t, zero);
+
 }
