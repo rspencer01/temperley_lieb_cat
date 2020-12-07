@@ -8,8 +8,9 @@ use crate::tex::Tex;
 #[derive(Clone, Debug)]
 pub struct TLMorphism<R>
 where R : Copy + Clone + Num + std::fmt::Display + std::fmt::Debug {
-    coeffs : HashMap<TLDiagram,R>,
-    delta : Option<R>,
+    pub coeffs : HashMap<TLDiagram,R>,
+    pub delta : Option<R>,
+    right_kills : Vec<usize>,
 }
 
 impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug> TLMorphism<R> {
@@ -29,11 +30,30 @@ impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug> TLMorphism<R> {
             }
         }
         if ans.is_empty() {
-            ans.insert(coeffs[0].0.clone(), coeffs[0].1);
+            ans.insert(TLDiagram::any(domain, co_domain), R::zero());
+        }
+        let mut right_kills = Vec::new();
+        if delta.is_some() {
+            let mut pows = vec![R::one(); co_domain];
+            for i in 1.. pows.len() {
+                pows[i] = pows[i-1]*delta.unwrap();
+            }
+            for i in 1..co_domain{
+                if TLMorphism::new(
+                    ans.iter().map(|(dp, vp)|{
+                        let m = dp.clone() * TLDiagram::u(co_domain, i);
+                        (m.1, pows[m.0] * *vp)
+                    }).collect(),
+                    None
+                ).is_zero() {
+                    right_kills.push(i);
+                }
+            }
         }
         TLMorphism{
             coeffs:ans,
-            delta
+            delta,
+            right_kills,
         }
     }
 
@@ -96,8 +116,7 @@ impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug> TLMorphism<R> {
     pub fn is_jones_wenzl(&self) -> bool {
         self.domain() == self.co_domain() &&
             (self.coeffs.get(&TLDiagram::id(self.domain())).unwrap_or(&R::zero()).is_one()) &&
-            (1..self.domain()).all(|i|
-            (TLMorphism::<R>::u(self.domain(),i) * self.clone()).is_zero())
+            self.right_kills.len() == self.co_domain() - 1
     }
 
     pub fn is_idempotent(&self) -> bool {
@@ -206,11 +225,19 @@ impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug> std::ops::Mul f
         for i in 1.. pows.len() {
             pows[i] = pows[i-1]*delta;
         }
-        for (d, v) in self.coeffs.iter() {
+        for (d, v) in other.coeffs.iter() {
+            let mut dont = false;
+            for j in d.simple_links().iter() {
+                if self.right_kills.contains(j) {
+                    dont = true;
+                    break;
+                }
+            }
+            if dont {continue}
             ans = ans + TLMorphism::new(
-                other.coeffs.iter().map(|(dp, vp)|{
-                    let m = d.clone() * dp.clone();
-                    (m.1, pows[m.0] * *v * *vp)
+                self.coeffs.iter().map(|(dp, vp)|{
+                    let m = dp.clone() * d.clone();
+                    (m.1, pows[m.0] * *vp * *v)
                 }).collect(),
                 Some(delta)
             )

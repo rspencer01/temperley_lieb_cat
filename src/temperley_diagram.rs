@@ -126,6 +126,12 @@ impl TLDiagram {
         }
         panic!("Site {:?} not found",site)
     }
+
+    pub fn simple_links(&self) -> Vec<usize> {
+        (1..self.domain())
+        .filter(|i| self.link(Source(*i)) == Source(i+1))
+        .collect()
+    }
 }
 
 impl PartialEq for TLDiagram {
