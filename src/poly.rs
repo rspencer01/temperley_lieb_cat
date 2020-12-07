@@ -186,7 +186,7 @@ where T : Num + GCD + Copy + std::fmt::Display + std::ops::Neg<Output=T> {
         if self == -other {
             return -Polynomial::one();
         }
-        assert!(self.degree() >= other.degree(), format!("Cannot divide polynomials {} {}", self, other));
+        assert!(self.degree() >= other.degree(), format!("Cannot divide polynomials {} by {} (degree the wrong way around)", self, other));
         if other == Polynomial::one() {
             return self;
         }
@@ -229,7 +229,19 @@ where T : Num + GCD + Copy + std::fmt::Display + std::ops::Neg<Output=T> {
     type Output = Self;
 
     fn rem(self, other:Self) -> Self {
-        self - self / other
+        assert!(!other.is_zero(), "Dividing polynomial by zero");
+        let mut rem = self;
+        let mut ans = [T::zero() ; MAX_DEGREE];
+        for i in (other.degree()..self.degree()+1).rev() {
+            if rem.coeffs[i].is_zero() { continue }
+            let m = rem.hightest_term() / other.hightest_term();
+            let mut diff = other * m;
+            diff.shift(i-other.degree());
+            rem = rem - diff;
+            ans[i - other.degree] = m;
+            assert!(rem.degree() < i, format!("Cannot divide polynomial {} by {}", self,other));
+        }
+        rem
     }
 }
 
@@ -367,7 +379,7 @@ where T: Num + GCD + Copy + std::fmt::Display + num::Signed + Tex {
     }
 
     fn is_multiterm(&self) -> bool {
-        self.degree() > 0
+        self.coeffs.iter().filter(|x| !x.is_zero()).count() > 1
     }
 }
 
@@ -406,7 +418,7 @@ mod tests {
     fn gen() {
         debug_assert_eq!(Polynomial::<i128>::gen(), Polynomial::new(vec![0,1].iter()));
         debug_assert_eq!(Polynomial::<i128>::gen().degree(), 1);
-        debug_assert_eq!("1X", format!("{}", Polynomial::<i128>::gen()));
+        debug_assert_eq!("X", format!("{}", Polynomial::<i128>::gen()));
         debug_assert_ne!(Polynomial::<i128>::gen(), Polynomial::zero());
         debug_assert_ne!(Polynomial::<i128>::gen(), Polynomial::one());
     }
