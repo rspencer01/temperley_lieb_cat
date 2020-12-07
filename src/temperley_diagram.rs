@@ -231,14 +231,15 @@ impl std::ops::BitOr for TLDiagram {
 
 impl Tex for TLDiagram {
     fn into_tex(&self) -> String {
-        let mut ans = String::from("\\vcenter{\\hbox{\\begin{tikzpicture}[scale=0.5]");
+        let width = self.domain().max(self.co_domain()) / 2;
+        let mut ans = String::from("\\vcenter{\\hbox{\\begin{tikzpicture}[scale=0.3]");
         ans += &format!("\\draw[thin] (0,.5) -- (0, {});",self.domain() as f32 + 0.5);
-        ans += &format!("\\draw[thin] (2,.5) -- (2, {});",self.co_domain() as f32 + 0.5);
+        ans += &format!("\\draw[thin] ({0},.5) -- ({0}, {1});",width, self.co_domain() as f32 + 0.5);
         for i in 1..self.domain()+1 {
             ans += &format!("\\fill (0,{}) circle(0.1);",i);
         }
         for i in 1..self.co_domain()+1 {
-            ans += &format!("\\fill (2,{}) circle(0.1);",i);
+            ans += &format!("\\fill ({0},{1}) circle(0.1);",width, i);
         }
         for lnk in self.0.iter() {
             if let Link(Source(i), Source(j)) = lnk {
@@ -249,13 +250,15 @@ impl Tex for TLDiagram {
             }
             if let Link(Target(i), Target(j)) = lnk {
                 ans += &format!(
-                    "\\draw[very thick] (2,{}) edge[out=180, in=180] (2,{});",
+                    "\\draw[very thick] ({0},{1}) edge[out=180, in=180] ({0},{2});",
+                    width,
                     self.co_domain()-i+1,
                     self.co_domain()-j+1);
             }
             if let Link(Source(i), Target(j)) = lnk {
                 ans += &format!(
-                    "\\draw[very thick] (0,{}) edge[out=0, in=180] (2,{});",
+                    "\\draw[very thick] (0,{1}) edge[out=0, in=180] ({0},{2});",
+                    width,
                     self.domain()-i+1,
                     self.co_domain()-j+1);
             }
