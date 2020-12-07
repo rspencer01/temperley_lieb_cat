@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use crate::temperley_diagram::TLDiagram;
 use crate::poly::{quantum, Polynomial};
 use crate::fraction::Fraction;
-use crate::num::{Num, Zero, Signed};
+use crate::num::{Num, Zero, Signed, One};
 use crate::tex::Tex;
 
 #[derive(Clone, Debug)]
@@ -14,7 +14,8 @@ where R : Copy + Clone + Num + std::fmt::Display + std::fmt::Debug {
 }
 
 impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug> TLMorphism<R> {
-    fn new(coeffs : Vec<(TLDiagram, R)>, delta: Option<R>) -> TLMorphism<R> {
+    pub fn new(coeffs : Vec<(TLDiagram, R)>, delta: Option<R>) -> TLMorphism<R> {
+        println!("{:?}", coeffs);
         let domain = coeffs.first().unwrap().0.domain();
         let co_domain = coeffs.first().unwrap().0.co_domain();
         let mut ans = HashMap::new();
@@ -69,8 +70,8 @@ impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug> TLMorphism<R> {
         }
     }
 
-    fn repoint(&mut self, delta : R) {
-        self.delta = Some(delta);
+    fn repoint(&mut self, delta : Option<R>) {
+        self.delta = delta;
     }
 
     fn domain(&self) -> usize {
@@ -133,7 +134,7 @@ impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug> TLMorphism<R> {
 
 pub fn jw(n : usize) -> TLMorphism<Fraction<Polynomial<i128>>> {
     let mut jw = TLMorphism::id(1);
-    jw.repoint(Polynomial::gen().into());
+    jw.repoint(Some(Polynomial::gen().into()));
     for i in 1..n {
         let jwp = jw.inject();
         jw = jwp.clone() - jwp.clone() * TLMorphism::u(i+1,i) * jwp.clone() * (Fraction::from(quantum(i as i128)) / quantum(i as i128+1));
@@ -143,7 +144,7 @@ pub fn jw(n : usize) -> TLMorphism<Fraction<Polynomial<i128>>> {
 
 pub fn jw_nat(n : usize) -> TLMorphism<Fraction<i128>> {
     let mut jw = TLMorphism::id(1);
-    jw.repoint(2.into());
+    jw.repoint(Some(2.into()));
     for i in 1..n {
         let jwp = jw.inject();
         jw = jwp.clone() - jwp.clone() * TLMorphism::u(i+1,i) * jwp.clone() * (Fraction::from(i as i128) / (i as i128+1));
@@ -219,7 +220,7 @@ impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug> std::ops::Mul f
     type Output = TLMorphism<R>;
 
     fn mul(self, other: TLMorphism<R>) -> TLMorphism<R> {
-        let mut ans = TLMorphism::new(vec![(TLDiagram::any(self.domain(), self.co_domain()), R::zero())], self.delta);
+        let mut ans = TLMorphism::new(vec![(TLDiagram::any(self.domain(), other.co_domain()), R::zero())], self.delta);
         let delta = self.ring_point(&other).expect("Require ring point to multiply morphisms");
         let mut pows = vec![R::one(); (self.domain() + self.co_domain()) / 2];
         for i in 1.. pows.len() {
@@ -359,7 +360,7 @@ mod tests {
     fn equality() {
         debug_assert_eq!(TLMorphism::new(vec![
             (TLDiagram::id(3), 1),
-            (TLDiagram::from_tableauxs(3, vec![2], vec![2]), -1),
+            (TLDiagram::from_tableauxs(3, vec![2].into_iter(), vec![2].into_iter()), -1),
         ], None),
         TLMorphism::new(vec![
             (TLDiagram::id(3), 1),
@@ -367,12 +368,12 @@ mod tests {
         ], None));
         debug_assert_eq!(TLMorphism::new(vec![
             (TLDiagram::id(3), 1),
-            (TLDiagram::from_tableauxs(3,vec![2], vec![2]), -1),
+            (TLDiagram::from_tableauxs(3,vec![2].into_iter(), vec![2].into_iter()), -1),
         ], None),
         TLMorphism::new(vec![
             (TLDiagram::id(3), 1),
-            (TLDiagram::from_tableauxs(3,vec![2], vec![2]), -1),
-            (TLDiagram::from_tableauxs(3,vec![3], vec![2]), 0),
+            (TLDiagram::from_tableauxs(3,vec![2].into_iter(), vec![2].into_iter()), -1),
+            (TLDiagram::from_tableauxs(3,vec![3].into_iter(), vec![2].into_iter()), 0),
         ], None));
     }
 
@@ -393,7 +394,7 @@ mod tests {
         type R = Fraction<Polynomial<i128>>;
         let delta = Fraction::from(Polynomial::gen());
         let mut a : TLMorphism<R> = TLMorphism::from(TLDiagram::u(6, 3));
-        a.repoint(delta);
+        a.repoint(Some(delta));
         debug_assert_eq!(
             a.clone() * a.clone(),
             a.clone() * delta,
@@ -406,15 +407,15 @@ mod tests {
         let delta : R = Polynomial::gen().into();
         let jw3 = TLMorphism::new(vec![
             (TLDiagram::id(3), R::one()),
-            (TLDiagram::from_tableauxs(3,vec![2], vec![2]), -R::from(quantum(2)) / quantum(3)),
-            (TLDiagram::from_tableauxs(3,vec![3], vec![3]), -R::from(quantum(2)) / quantum(3)),
-            (TLDiagram::from_tableauxs(3,vec![2], vec![3]), R::from(quantum(1)) / quantum(3)),
-            (TLDiagram::from_tableauxs(3,vec![3], vec![2]), R::from(quantum(1)) / quantum(3)),
+            (TLDiagram::from_tableauxs(3,vec![2].into_iter(), vec![2].into_iter()), -R::from(quantum(2)) / quantum(3)),
+            (TLDiagram::from_tableauxs(3,vec![3].into_iter(), vec![3].into_iter()), -R::from(quantum(2)) / quantum(3)),
+            (TLDiagram::from_tableauxs(3,vec![2].into_iter(), vec![3].into_iter()), R::from(quantum(1)) / quantum(3)),
+            (TLDiagram::from_tableauxs(3,vec![3].into_iter(), vec![2].into_iter()), R::from(quantum(1)) / quantum(3)),
         ], Some(Polynomial::gen().into()));
         debug_assert_eq!(jw3, jw3.involute());
         let mut a = TLMorphism::from(TLDiagram::u(3,1));
         let mut b = TLMorphism::from(TLDiagram::u(3,1));
-        a.repoint(delta);
+        a.repoint(Some(delta));
         debug_assert_eq!(a.clone() * jw3.clone(), TLMorphism::zero(3));
         debug_assert_eq!(b.clone() * jw3.clone(), TLMorphism::zero(3));
         debug_assert_eq!(jw3.clone() * a.clone(), TLMorphism::zero(3));
@@ -427,7 +428,7 @@ mod tests {
     fn general_jw() {
         type R = Fraction<Polynomial<i128>>;
         let mut jw1 = TLMorphism::<R>::id(1);
-        jw1.repoint(Polynomial::gen().into());
+        jw1.repoint(Some(Polynomial::gen().into()));
         assert!(jw(1).is_jones_wenzl());
         assert!(jw(2).is_jones_wenzl());
         assert!(jw(3).is_jones_wenzl());
@@ -437,9 +438,15 @@ mod tests {
     }
 
     #[test]
+    fn jw8() {
+        assert!(jw(7).is_jones_wenzl());
+    }
+
+    #[test]
     fn tensored_jw() {
         assert!((jw(4) | jw(3)).is_idempotent());
-        assert!((jw(3) | jw(2) | jw(3)).is_idempotent()); 
+        assert_eq!((jw(4) | jw(3)).right_kills, vec![1,2,3,5,6]);
+        assert!((jw(3) | jw(2) | jw(3)).is_idempotent());
         assert!(!((jw(3) | jw(2) | jw(3)).is_jones_wenzl()));
         assert!((jw(5) | jw(1)).is_idempotent());
         assert!(!(jw(5) | jw(1)).is_jones_wenzl());
