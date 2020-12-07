@@ -210,11 +210,11 @@ where T : Copy + Num + GCD + Tex + Signed {
 impl<T> Signed for Fraction<T>
 where T : Copy + Num + GCD + Tex + Signed {
     fn is_positive(&self) -> bool {
-        self.num.is_positive() ^ self.den.is_positive()
+        self.num.is_positive()
     }
 
     fn is_negative(&self) -> bool {
-        !self.is_positive()
+        self.num.is_negative()
     }
 
     fn abs(&self) -> Fraction<T> {

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use crate::temperley_diagram::TLDiagram;
 use crate::poly::{quantum, Polynomial};
 use crate::fraction::Fraction;
-use crate::num::{Num, Zero};
+use crate::num::{Num, Zero, Signed};
 use crate::tex::Tex;
 
 #[derive(Clone, Debug)]
@@ -285,20 +285,30 @@ impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug> num::Zero for T
     }
 }
 
-impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug + Tex> Tex for TLMorphism<R> {
+impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug + Tex + Signed> Tex for TLMorphism<R> {
     fn into_tex(&self) -> String {
         let mut ans = String::new();
         for (k,v) in self.coeffs.iter() {
             if !ans.is_empty() {
-                ans += " + ";
+                if v.is_positive() {
+                    ans += " + ";
+                } else {
+                    ans += " - ";
+                }
+            }
+            if ans.is_empty() && v.is_negative() {
+                ans += "-";
             }
             if v.is_multiterm() {
                 ans += "\\left(";
             }
-            ans += &v.into_tex();
+            if !v.abs().is_one() {
+                ans += &v.abs().into_tex();
+            }
             if v.is_multiterm() {
                 ans += "\\right)";
             }
+            ans += "\\,";
             ans += &k.into_tex();
         }
         ans

@@ -1,7 +1,7 @@
 use num::Num;
 
 use crate::gcd::GCD;
-use crate::num::{One, Zero};
+use crate::num::{One, Zero, Signed};
 use crate::tex::Tex;
 
 const MAX_DEGREE : usize = 256;
@@ -240,6 +240,33 @@ where T : Num + GCD + Copy + std::fmt::Display + std::ops::Neg<Output=T> {
 
     fn from_str_radix(_str: &str, _radix: u32) -> Result<Self, Self::FromStrRadixErr> {
         Err(())
+    }
+}
+
+impl<T> Signed for Polynomial<T>
+where T : Num + GCD + Copy + std::fmt::Display + std::ops::Neg<Output=T> + Signed {
+    fn is_positive(&self) -> bool {
+        self.hightest_term().is_positive()
+    }
+
+    fn is_negative(&self) -> bool {
+        self.hightest_term().is_negative()
+    }
+
+    fn abs(&self) -> Polynomial<T> {
+        if self.is_positive() {
+            self.clone()
+        } else {
+            -self.clone()
+        }
+    }
+
+    fn abs_sub(&self, other : &Polynomial<T>) -> Polynomial<T> {
+        unimplemented!()
+    }
+
+    fn signum(&self) -> Polynomial<T> {
+        unimplemented!()
     }
 }
 
