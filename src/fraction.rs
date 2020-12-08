@@ -158,7 +158,7 @@ where T : Num + GCD + Copy + Signed {
     type Output = Self;
 
     fn rem(self, _other:Self) -> Self {
-        Fraction::new(T::zero(), T::one())
+        unimplemented!()
     }
 }
 
@@ -167,7 +167,7 @@ where T : Num + GCD + Copy + Signed {
     type Output = Self;
 
     fn neg(self) -> Self {
-        Fraction::zero() - self
+        Fraction::new(-self.num, self.den)
     }
 }
 
