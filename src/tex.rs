@@ -1,4 +1,4 @@
-use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::io::Write;
 use std::process::{Command, Stdio};
 
 pub trait Tex {
@@ -22,6 +22,7 @@ pub trait Tex {
     \\end{{document}}", self.into_tex());
         let mut command = Command::new("/home/robert/bin/pdflatex")
             .stdin(Stdio::piped())
+            .stdout(Stdio::null())
             .arg("-output-directory=/tmp")
             .arg("-shell-escape")
             .spawn()
