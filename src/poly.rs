@@ -44,7 +44,7 @@ where T : Num + GCD + Copy {
         self.degree
     }
 
-    fn constant_term(&self) -> T {
+    pub fn constant_term(&self) -> T {
         self.coeffs[0]
     }
 
@@ -239,7 +239,9 @@ where T : Num + GCD + Copy + std::fmt::Display + std::ops::Neg<Output=T> {
             diff.shift(i-other.degree());
             rem = rem - diff;
             ans[i - other.degree] = m;
-            assert!(rem.degree() < i, format!("Cannot divide polynomial {} by {}", self,other));
+            if rem.degree() >= i {
+                break;
+            }
         }
         rem
     }
@@ -273,7 +275,7 @@ where T : Num + GCD + Copy + std::fmt::Display + std::ops::Neg<Output=T> + Signe
         }
     }
 
-    fn abs_sub(&self, other : &Polynomial<T>) -> Polynomial<T> {
+    fn abs_sub(&self, _ : &Polynomial<T>) -> Polynomial<T> {
         unimplemented!()
     }
 
