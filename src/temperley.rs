@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use crate::temperley_diagram::TLDiagram;
 use crate::poly::{quantum, Polynomial};
 use crate::fraction::Fraction;
-use crate::num::{Num, Zero, Signed, One};
+use crate::num::{Num, Zero, Signed};
 use crate::tex::Tex;
 
 #[derive(Clone, Debug)]
@@ -15,7 +15,6 @@ where R : Copy + Clone + Num + std::fmt::Display + std::fmt::Debug {
 
 impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug> TLMorphism<R> {
     pub fn new(coeffs : Vec<(TLDiagram, R)>, delta: Option<R>) -> TLMorphism<R> {
-        println!("{:?}", coeffs);
         let domain = coeffs.first().unwrap().0.domain();
         let co_domain = coeffs.first().unwrap().0.co_domain();
         let mut ans = HashMap::new();
@@ -74,11 +73,11 @@ impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug> TLMorphism<R> {
         self.delta = delta;
     }
 
-    fn domain(&self) -> usize {
+    pub fn domain(&self) -> usize {
         self.coeffs.keys().next().unwrap().domain()
     }
 
-    fn co_domain(&self) -> usize {
+    pub fn co_domain(&self) -> usize {
         self.coeffs.keys().next().unwrap().co_domain()
     }
 
@@ -93,7 +92,7 @@ impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug> TLMorphism<R> {
         TLDiagram::id(n).into()
     }
 
-    fn zero(n : usize) -> TLMorphism<R> {
+    pub fn id_zero(n : usize) -> TLMorphism<R> {
         TLMorphism::id(n) * R::zero()
     }
 
@@ -129,6 +128,33 @@ impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug> TLMorphism<R> {
             .filter(|(_,v)| !v.is_zero())
             .map(|(k,_)| k.clone())
             .collect()
+    }
+
+    pub fn turn_down(&self, i : isize) -> TLMorphism<R> {
+        TLMorphism::new(
+            self.coeffs.iter()
+            .map(|(k,v)| (k.turn_down(i), *v))
+            .collect(),
+            self.delta
+        )
+    }
+
+    pub fn turn_up(&self, i : isize) -> TLMorphism<R> {
+        TLMorphism::new(
+            self.coeffs.iter()
+            .map(|(k,v)| (k.turn_up(i), *v))
+            .collect(),
+            self.delta
+        )
+    }
+
+    pub fn rotate(&self, i : isize) -> TLMorphism<R> {
+        TLMorphism::new(
+            self.coeffs.iter()
+            .map(|(k,v)| (k.rotate(i), *v))
+            .collect(),
+            self.delta
+        )
     }
 }
 
@@ -178,20 +204,11 @@ impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug> std::ops::Add f
     type Output = TLMorphism<R>;
 
     fn add(self, other: TLMorphism<R>) -> TLMorphism<R> {
+        let delta = self.ring_point(&other);
         let mut ans = Vec::new();
-        for (k, v) in self.coeffs.iter() {
-            ans.push((k.clone(), match other.coeffs.get(k) {
-                Some(vp) => {*v + *vp},
-                None => {*v},
-            }));
-        }
-        for (k, v) in other.coeffs.iter() {
-            match self.coeffs.get(k) {
-                Some(_) => {},
-                None => {ans.push((k.clone(), *v))},
-            };
-        }
-        TLMorphism::new(ans, self.ring_point(&other))
+        ans.extend(self.coeffs.into_iter());
+        ans.extend(other.coeffs.into_iter());
+        TLMorphism::new(ans, delta)
     }
 }
 
@@ -254,13 +271,13 @@ impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug> std::ops::BitOr
         let mut ans = TLMorphism::new(vec![
             (TLDiagram::any(self.domain() + other.domain(), self.co_domain()+other.co_domain()), R::zero())
         ], self.delta);
-        let delta = self.ring_point(&other).expect("Require ring point to multiply morphisms");
+        let delta = self.ring_point(&other);
         for (d, v) in self.coeffs.iter() {
             ans = ans + TLMorphism::new(
                 other.coeffs.iter().map(|(dp, vp)|{
                     (d.clone() | dp.clone(), *v * *vp)
                 }).collect(),
-                Some(delta)
+                delta
             )
         }
         ans
@@ -317,6 +334,7 @@ impl<R:Copy + Clone + Num + std::fmt::Display + std::fmt::Debug + Tex + Signed> 
     fn into_tex(&self) -> String {
         let mut ans = String::new();
         for (k,v) in self.coeffs.iter() {
+            if v.is_zero() { continue; }
             if !ans.is_empty() {
                 if v.is_positive() {
                     ans += " + ";
@@ -379,16 +397,16 @@ mod tests {
 
     #[test]
     fn add() {
-        debug_assert_eq!(TLMorphism::<i128>::zero(5) + TLMorphism::zero(5), TLMorphism::zero(5));
-        debug_assert_ne!(TLMorphism::<i128>::zero(5) + TLMorphism::zero(5), TLMorphism::zero(6));
-        debug_assert_eq!(TLMorphism::<i128>::zero(5) + TLMorphism::id(5), TLMorphism::id(5));
-        debug_assert_eq!(TLMorphism::<i128>::id(5) + TLMorphism::zero(5), TLMorphism::id(5));
+        debug_assert_eq!(TLMorphism::<i128>::id_zero(5) + TLMorphism::id_zero(5), TLMorphism::id_zero(5));
+        debug_assert_ne!(TLMorphism::<i128>::id_zero(5) + TLMorphism::id_zero(5), TLMorphism::id_zero(6));
+        debug_assert_eq!(TLMorphism::<i128>::id_zero(5) + TLMorphism::id(5), TLMorphism::id(5));
+        debug_assert_eq!(TLMorphism::<i128>::id(5) + TLMorphism::id_zero(5), TLMorphism::id(5));
     }
 
     #[test]
     fn mul() {
         debug_assert_eq!(
-            TLMorphism::zero(6),
+            TLMorphism::id_zero(6),
             TLMorphism::id(6) * (0 as i128)
         );
         type R = Fraction<Polynomial<i128>>;
@@ -416,10 +434,10 @@ mod tests {
         let mut a = TLMorphism::from(TLDiagram::u(3,1));
         let mut b = TLMorphism::from(TLDiagram::u(3,1));
         a.repoint(Some(delta));
-        debug_assert_eq!(a.clone() * jw3.clone(), TLMorphism::zero(3));
-        debug_assert_eq!(b.clone() * jw3.clone(), TLMorphism::zero(3));
-        debug_assert_eq!(jw3.clone() * a.clone(), TLMorphism::zero(3));
-        debug_assert_eq!(jw3.clone() * b.clone(), TLMorphism::zero(3));
+        debug_assert_eq!(a.clone() * jw3.clone(), TLMorphism::id_zero(3));
+        debug_assert_eq!(b.clone() * jw3.clone(), TLMorphism::id_zero(3));
+        debug_assert_eq!(jw3.clone() * a.clone(), TLMorphism::id_zero(3));
+        debug_assert_eq!(jw3.clone() * b.clone(), TLMorphism::id_zero(3));
         debug_assert_eq!(jw3.clone() * jw3.clone(), jw3);
         assert!(jw3.is_jones_wenzl());
     }
@@ -451,5 +469,37 @@ mod tests {
         assert!((jw(5) | jw(1)).is_idempotent());
         assert!(!(jw(5) | jw(1)).is_jones_wenzl());
         assert!((jw(4) | jw(2)) * jw(6) == jw(6));
+    }
+
+    #[test]
+    fn jw5over3() {
+        let jw2 =jw(2);
+        let mut t = TLMorphism::id(5) * Fraction::zero();
+        for i in -2..3 {
+            let coeff = if i %2 == 0 { Fraction::one() } else { - Fraction::one() };
+            t = t + (jw2.turn_down(i) | TLMorphism::id(1) | jw2.turn_up(-i) * coeff);
+        }
+        for i in 1..5 {
+            let s = TLMorphism::u(5,i) * t.clone();
+            for c in s.coeffs.values() {
+                assert!((c.num() % quantum(3)).is_zero());
+            }
+        }
+    }
+
+    #[test]
+    fn jw9over5() {
+        let jw4 =jw(4);
+        let mut t = TLMorphism::id(9) * Fraction::zero();
+        for i in -4..5 {
+            let coeff = if i %2 == 0 { Fraction::one() } else { - Fraction::one() };
+            t = t + (jw4.turn_down(i) | TLMorphism::id(1) | jw4.turn_up(-i) * coeff);
+        }
+        for i in 1..9 {
+            let s = TLMorphism::u(9,i) * t.clone();
+            for c in s.coeffs.values() {
+                assert!((c.num() % quantum(5)).is_zero());
+            }
+        }
     }
 }
