@@ -4,7 +4,7 @@ use crate::temperley_site::{Site, Site::*};
 use crate::temperley_link::Link;
 use crate::tex::Tex;
 
-#[derive(Clone)]
+#[derive(Clone, PartialOrd, Ord)]
 pub struct TLDiagram(Vec<Link>);
 
 impl std::fmt::Debug for TLDiagram {
@@ -81,11 +81,36 @@ impl TLDiagram {
         self.0.len() * 2 - self.domain()
     }
 
+    pub fn propagation(&self) -> usize {
+        self.0.iter()
+            .map(|x|
+            match x {
+                Link(Source(_), Source(_)) => 0,
+                Link(Source(_), Target(_)) => 1,
+                Link(Target(_), Source(_)) => 1,
+                Link(Target(_), Target(_)) => 0,
+            }
+            ).sum()
+    }
+
     pub fn involute(self) -> TLDiagram {
         TLDiagram::new(
             self.0.into_iter().map(|x| {
                 x.involute()
             }).collect()
+        )
+    }
+
+    pub fn flip(&self) -> TLDiagram {
+        TLDiagram::new(
+            self.0.iter().map(|x|
+                match x {
+                    Link(Source(a), Source(b)) => Link::new(Source(self.domain() + 1 - a), Source(self.domain() + 1 - b)),
+                    Link(Source(a), Target(b)) => Link::new(Source(self.domain() + 1 - a), Target(self.co_domain() + 1 - b)),
+                    Link(Target(a), Target(b)) => Link::new(Target(self.co_domain() + 1 - a), Target(self.co_domain() + 1 - b)),
+                    _ => panic!("Unexpected form of diagram"),
+                }
+            ).collect()
         )
     }
 
@@ -132,6 +157,60 @@ impl TLDiagram {
         .filter(|i| self.link(Source(*i)) == Source(i+1))
         .collect()
     }
+
+
+    pub fn turn_down(&self, i : isize) -> TLDiagram {
+        if i == 0 {
+            return self.clone();
+        }
+        let n = self.domain();
+        let m = self.co_domain();
+        let links =
+            if i > 0 {
+                assert!(m > 0,"Cannot turn element");
+                self.0.iter()
+                    .map(|x|
+                         if x.0 == Target(m) {
+                             Link::new(x.1, Source(n+1))
+                         } else if x.1 == Target(m) {
+                             Link::new(x.0, Source(n+1))
+                         } else {
+                             *x
+                         }
+                    ).collect::<Vec<_>>()
+            } else {
+                assert!(n > 0, "Cannot turn element");
+                self.0.iter()
+                    .map(|x|
+                         if x.0 == Source(n) {
+                             Link::new(x.1, Target(m+1))
+                         } else if x.1 == Source(n) {
+                             Link::new(x.0, Target(m+1))
+                         } else {
+                             *x
+                         }
+                    ).collect::<Vec<_>>()
+            };
+        let new = if i < 0 { i + 1 } else { i - 1 };
+        TLDiagram::new(links).turn_down(new)
+    }
+
+    pub fn turn_up(&self, i: isize) -> TLDiagram {
+        self.flip().turn_down(i).flip()
+    }
+
+    /// Rotate the diagram anticlockwise
+    pub fn rotate(&self, i : isize) -> TLDiagram {
+        if i == 0 {
+            self.clone()
+        } else {
+            if i > 0 {
+                self.turn_up(1).turn_down(-1).rotate(i-1)
+            } else {
+                self.turn_up(1).turn_down(-1).rotate(i+1)
+            }
+        }
+    }
 }
 
 impl PartialEq for TLDiagram {
@@ -160,7 +239,7 @@ impl std::ops::Mul for TLDiagram {
     type Output = (usize, TLDiagram);
 
     fn mul(self, other: TLDiagram) -> (usize, TLDiagram) {
-        assert_eq!(self.co_domain(), other.domain());
+        assert_eq!(self.co_domain(), other.domain(), "Cannot multiply diagrams if their (co)domains don't match");
         // Inlcusive
         // Sources 1   .. a
         // Middle  a+1 .. a+b
@@ -320,5 +399,12 @@ mod tests {
         debug_assert_eq!(TLDiagram::any(15,5).co_domain(), 5);
         debug_assert_eq!(TLDiagram::any(16,12).domain(), 16);
         debug_assert_eq!(TLDiagram::any(16,12).co_domain(), 12);
+    }
+
+    #[test]
+    fn turn() {
+        debug_assert_eq!(TLDiagram::id(3).turn_down(1), TLDiagram::from_tableaux(4, vec![4].into_iter()));
+        debug_assert_eq!(TLDiagram::any(14,4).turn_down(3).turn_down(-3), TLDiagram::any(14,4));
+        debug_assert_eq!(TLDiagram::id(5).turn_up(-2).turn_down(2), TLDiagram::from_tableauxs(5,vec![4,5].into_iter(), vec![3,4].into_iter()));
     }
 }
