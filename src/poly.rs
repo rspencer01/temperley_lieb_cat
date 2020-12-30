@@ -3,6 +3,7 @@ use num::Num;
 use crate::gcd::GCD;
 use crate::num::{One, Zero, Signed};
 use crate::tex::Tex;
+use crate::serial::Serialisable;
 
 const MAX_DEGREE : usize = 256;
 
@@ -403,6 +404,19 @@ pub fn quantum(n : i128) -> Polynomial<i128> {
         coeffs[(n-1-2*i) as usize] = (1-2*(i%2)) * choose(n-1-i,i);
     }
     Polynomial::new(coeffs.iter())
+}
+
+impl Serialisable for Polynomial<structures::Q> {
+    fn serialise(&self) -> String {
+        self.coeffs[..self.degree+1].to_vec().serialise()
+    }
+
+    fn deserialise(inpt : &str) -> Self {
+        let res : Vec<structures::Q> = Vec::deserialise(inpt);
+        Polynomial::new(
+            res.as_slice()
+        )
+    }
 }
 
 #[cfg(test)]
