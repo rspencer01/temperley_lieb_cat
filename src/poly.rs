@@ -1,28 +1,45 @@
 use num::Num;
+use std::ops::{Add, Sub, Mul, Div, Neg, Rem};
+use std::fmt::{Debug, Display};
 
-use crate::gcd::GCD;
+use crate::gcd::PartialGCD;
 use crate::num::{One, Zero, Signed};
 use crate::tex::Tex;
 use crate::serial::Serialisable;
+use crate::structures::Field;
+use crate::structures;
+use crate::fraction::Fraction;
 
-const MAX_DEGREE : usize = 256;
+const MAX_DEGREE : usize = 200;
 
+/// A polynomial in a single variable over a _field_.
 #[derive(Copy, Clone, PartialEq, Eq)]
-pub struct Polynomial<T : Num + GCD + Copy> {
+pub struct Polynomial<T : Copy> {
     coeffs : [T; MAX_DEGREE],
     degree : usize,
 }
 
 impl<T> Polynomial<T>
-where T : Num + GCD + Copy {
-    fn new<I,S>(mut in_coeffs: I) -> Polynomial<T>
-    where I : Iterator<Item=S>,
-          S : std::ops::Deref<Target=T> {
+where T : Copy {
+    fn degree(&self) -> usize {
+        self.degree
+    }
+
+    fn hightest_term(&self) -> T {
+        self.coeffs[self.degree()]
+    }
+}
+
+impl<T> Polynomial<T>
+where T : Copy + Zero {
+    pub fn new<V>(in_coeffs: &[V]) -> Polynomial<T>
+    where V : Into<T> + Copy {
         let mut coeffs = [T::zero() ; MAX_DEGREE];
         let mut degree = 0;
+        let mut it = in_coeffs.iter();
         for i in 0..MAX_DEGREE {
-            if let Some(x) = in_coeffs.next() {
-                coeffs[i] = *x;
+            if let Some(x) = it.next() {
+                coeffs[i] = (*x).into();
                 if !coeffs[i].is_zero() {
                     degree = i;
                 }
@@ -30,27 +47,11 @@ where T : Num + GCD + Copy {
                 break;
             }
        }
-       assert!(in_coeffs.next().is_none(), "Overflow in polynomial construction");
+       assert!(it.next().is_none(), "Overflow in polynomial construction");
        Polynomial {
            coeffs,
            degree,
        }
-    }
-
-    pub fn gen() -> Self {
-        Polynomial::new(vec![T::zero(), T::one()].iter())
-    }
-
-    fn degree(&self) -> usize {
-        self.degree
-    }
-
-    pub fn constant_term(&self) -> T {
-        self.coeffs[0]
-    }
-
-    fn hightest_term(&self) -> T {
-        self.coeffs[self.degree()]
     }
 
     fn shift(&mut self, n : usize) {
@@ -64,8 +65,50 @@ where T : Num + GCD + Copy {
     }
 }
 
-impl<T> std::ops::Add for Polynomial<T>
-where T : Num + GCD + Copy {
+impl<T> Polynomial<T>
+where T : Copy + Zero + One {
+    pub fn gen() -> Self {
+        Polynomial::new(&[T::zero(), T::one()])
+    }
+}
+
+
+impl<T> Polynomial<T>
+where T : Copy + Field + Eq {
+    fn div_mod(&self, other: &Self) -> (Self, Self) {
+        assert!(!other.is_zero(), "Dividing polynomial by zero");
+        if self.is_zero() {
+            return (Polynomial::zero(), Polynomial::zero());
+        }
+        if *self == *other {
+            return (Polynomial::one(), Polynomial::zero());
+        }
+        if *self == -*other {
+            return (-Polynomial::one(), Polynomial::zero());
+        }
+        if self.degree() < other.degree() {
+            return (Polynomial::zero(), *self);
+        }
+        let mut rem = *self;
+        let mut ans = [T::zero() ; MAX_DEGREE];
+        for i in (other.degree()..self.degree()+1).rev() {
+            if rem.coeffs[i].is_zero() {
+                continue;
+            }
+            // Because T is guaranteed to be a field, this gives no remainder
+            let m = rem.hightest_term() / other.hightest_term();
+            let mut diff = *other * m;
+            diff.shift(i-other.degree());
+            rem = rem - diff;
+            ans[i - other.degree] = m;
+            assert!(rem.degree() < i || i == 0);
+        }
+        (Polynomial::new(&ans), rem)
+    }
+}
+
+impl<T> Add for Polynomial<T>
+where T : Copy + Add + Zero {
     type Output = Self;
 
     fn add(self, other: Self) -> Self {
@@ -86,8 +129,8 @@ where T : Num + GCD + Copy {
     }
 }
 
-impl<T> std::ops::Neg for Polynomial<T>
-where T : Num + GCD + Copy + std::ops::Neg<Output=T> {
+impl<T> Neg for Polynomial<T>
+where T : Copy + Zero + Neg<Output=T> {
     type Output = Self;
 
     fn neg(self) -> Self {
@@ -100,8 +143,8 @@ where T : Num + GCD + Copy + std::ops::Neg<Output=T> {
     }
 }
 
-impl<T> std::ops::Sub for Polynomial<T>
-where T : Num + GCD + Copy + std::ops::Neg<Output=T> {
+impl<T> Sub for Polynomial<T>
+where T : Copy + Zero + Sub<Output=T> {
     type Output = Self;
 
     fn sub(self, other: Self) -> Self {
@@ -109,39 +152,29 @@ where T : Num + GCD + Copy + std::ops::Neg<Output=T> {
         for i in 0..other.degree()+1 {
             ans[i] = ans[i] - other.coeffs[i];
         }
-        let mut degree = 0;
-        for i in 0..self.degree().max(other.degree())+1 {
-            if !ans[i].is_zero() {
-                degree = i;
-            }
-        }
-        Polynomial{
-            coeffs: ans,
-            degree,
-        }
+        Polynomial::new(&ans)
     }
 }
 
-impl<T> std::ops::Mul for Polynomial<T>
-where T : Num + GCD + Copy {
+impl<T> Mul for Polynomial<T>
+where T : Copy + Zero + Add + Mul<Output=T> {
     type Output = Self;
 
     fn mul(self, other: Self) -> Self {
         assert!(self.degree() + other.degree() < MAX_DEGREE, "Attempt to multiply polynomials with overflow");
         let mut ans = [T::zero() ; MAX_DEGREE];
-        for i in 0..(self.degree() + other.degree() + 1) {
-            for j in 0..i.min(self.degree())+1 {
-                if i-j <= other.degree() {
+        let max_resulting_degree = self.degree() + other.degree();
+        for i in 0..max_resulting_degree + 1 {
+            for j in i.saturating_sub(other.degree())..i.min(self.degree())+1 {
                     ans[i] = ans[i] + self.coeffs[j] * other.coeffs[i-j];
-                }
             }
         }
-        Polynomial::new(ans.iter())
+        Polynomial::new(&ans)
     }
 }
 
-impl<T> std::ops::Mul<T> for Polynomial<T>
-where T : Num + GCD + Copy {
+impl<T> Mul<T> for Polynomial<T>
+where T : Copy + One + Mul + Eq {
     type Output = Self;
 
     fn mul(self, other: T) -> Self {
@@ -159,11 +192,12 @@ where T : Num + GCD + Copy {
     }
 }
 
-impl<T> std::ops::Div<T> for Polynomial<T>
-where T : Num + GCD + Copy {
+impl<T> Div<T> for Polynomial<T>
+where T : Copy + Zero + Div<Output=T> {
     type Output = Self;
 
     fn div(self, other: T) -> Self {
+        assert!(!other.is_zero(), "Cannot divide polynomial by zero");
         let mut ans = self.coeffs;
         for i in 0..self.degree()+1 {
             ans[i] = ans[i] / other;
@@ -175,49 +209,27 @@ where T : Num + GCD + Copy {
     }
 }
 
-impl<T> std::ops::Div for Polynomial<T>
-where T : Num + GCD + Copy + std::fmt::Display + std::ops::Neg<Output=T> {
+impl<T> Div for Polynomial<T>
+where T : Field + Copy + Eq {
     type Output = Self;
 
     fn div(self, other: Self) -> Self {
-        assert!(!other.is_zero(), "Dividing polynomial by zero");
-        if self == Polynomial::zero() {
-            return self;
-        }
-        if self == -other {
-            return -Polynomial::one();
-        }
-        assert!(self.degree() >= other.degree(), format!("Cannot divide polynomials {} by {} (degree the wrong way around)", self, other));
-        if other == Polynomial::one() {
-            return self;
-        }
-        let mut rem = self;
-        let mut ans = [T::zero() ; MAX_DEGREE];
-        for i in (other.degree()..self.degree()+1).rev() {
-            if rem.coeffs[i].is_zero() { continue }
-            let m = rem.hightest_term() / other.hightest_term();
-            let mut diff = other * m;
-            diff.shift(i-other.degree());
-            rem = rem - diff;
-            ans[i - other.degree] = m;
-            assert!(rem.degree() < i, format!("Cannot divide polynomial {} by {}", self,other));
-        }
-        assert!(rem.is_zero());
-        Polynomial::new(ans.iter())
+        self.div_mod(&other).0
     }
 }
 
-impl<T> num::One for Polynomial<T>
-where T : Num + GCD + Copy + std::fmt::Display {
+impl<T> One for Polynomial<T>
+where T : Copy + One + Zero {
     fn one() -> Self {
-        Polynomial::new(vec![T::one()].iter())
+        Polynomial::new(&[T::one()])
     }
 }
 
-impl<T> num::Zero for Polynomial<T>
-where T : Num + GCD + Copy {
+impl<T> Zero for Polynomial<T>
+where T : Copy + Zero {
     fn zero() -> Self {
-        Polynomial::new(vec![T::zero()].iter())
+        let c : [T;0] = [];
+        Polynomial::new(&c)
     }
 
     fn is_zero(&self) -> bool {
@@ -225,32 +237,18 @@ where T : Num + GCD + Copy {
     }
 }
 
-impl<T> std::ops::Rem for Polynomial<T>
-where T : Num + GCD + Copy + std::fmt::Display + std::ops::Neg<Output=T> {
+impl<T> Rem for Polynomial<T>
+where T : Copy + Field + Eq {
     type Output = Self;
 
     fn rem(self, other:Self) -> Self {
-        assert!(!other.is_zero(), "Dividing polynomial by zero");
-        let mut rem = self;
-        let mut ans = [T::zero() ; MAX_DEGREE];
-        for i in (other.degree()..self.degree()+1).rev() {
-            if rem.coeffs[i].is_zero() { continue }
-            let m = rem.hightest_term() / other.hightest_term();
-            let mut diff = other * m;
-            diff.shift(i-other.degree());
-            rem = rem - diff;
-            ans[i - other.degree] = m;
-            if rem.degree() >= i {
-                break;
-            }
-        }
-        rem
+        self.div_mod(&other).1
     }
 }
 
 
 impl<T> Num for Polynomial<T>
-where T : Num + GCD + Copy + std::fmt::Display + std::ops::Neg<Output=T> {
+where T : Copy + Field + Eq {
     type FromStrRadixErr = ();
 
     fn from_str_radix(_str: &str, _radix: u32) -> Result<Self, Self::FromStrRadixErr> {
@@ -259,7 +257,7 @@ where T : Num + GCD + Copy + std::fmt::Display + std::ops::Neg<Output=T> {
 }
 
 impl<T> Signed for Polynomial<T>
-where T : Num + GCD + Copy + std::fmt::Display + std::ops::Neg<Output=T> + Signed {
+where T : Copy + Field + Eq + Signed {
     fn is_positive(&self) -> bool {
         self.hightest_term().is_positive()
     }
@@ -285,38 +283,38 @@ where T : Num + GCD + Copy + std::fmt::Display + std::ops::Neg<Output=T> + Signe
     }
 }
 
-impl<T> GCD for Polynomial<T>
-where T:Num + GCD + Copy + std::ops::Neg<Output=T> + std::fmt::Display {
-    fn gcd(&self, other: &Polynomial<T>) -> Polynomial<T> {
+impl PartialGCD for Polynomial<structures::Q> {
+    fn partial_gcd(&self, other: &Polynomial<structures::Q>) -> Polynomial<structures::Q> {
+        if (self.coeffs.iter().fold(0, |a, x| x.den().abs().max(a)) > 0xffffffff) ||
+           (self.coeffs.iter().fold(0, |a, x| x.num().abs().max(a)) > 0xffffffff) ||
+           (other.coeffs.iter().fold(0, |a, x| x.den().abs().max(a)) > 0xfffffffff) ||
+           (other.coeffs.iter().fold(0, |a, x| x.num().abs().max(a)) > 0xfffffffff) {
+            return Polynomial::one();
+        }
         if self.degree() < other.degree() {
-            return other.gcd(self);
+            return other.partial_gcd(self);
         }
         if other.is_zero() {
-            if self.is_zero() {
-                return *self;
-            } else {
-                let g = self.coeffs[..self.degree()+1].iter().fold(self.hightest_term(), |a, b| a.gcd(b));
-                return *self / g;
+            return *self;
+        }
+        let div_rem = self.div_mod(other);
+        if div_rem.0.is_zero() {
+            Polynomial::one()
+        } else {
+            let mut re = div_rem.1;
+            //let c = re.coeffs.iter().fold(re.hightest_term().den(), |x,y | x * y.den() / x.gcd(&y.den()));
+            let c = re.hightest_term();
+            if !c.is_zero() {
+                re = re / c;
             }
+            let sub = other.partial_gcd(&re);
+            sub / sub.hightest_term()
         }
-        if other.degree() == 0 {
-            if other.coeffs[0].is_one() || (-other.coeffs[0]).is_one() {
-                return Polynomial::one();
-            }
-        }
-        let mut diff = *other;
-        diff.shift(self.degree() - other.degree());
-        diff = diff * self.hightest_term() - *self * diff.hightest_term();
-        let g = diff.coeffs[..diff.degree()+1].iter().fold(diff.hightest_term(), |a,b| a.gcd(b));
-        if !g.is_zero() && !g.is_one() {
-            diff = diff / g;
-        }
-        other.gcd(&diff)
     }
 }
 
-impl<T> std::fmt::Display for Polynomial<T>
-where T: Num + GCD + Copy + std::fmt::Display {
+impl<T> Display for Polynomial<T>
+where T: Copy + One + Zero + Display + Eq {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let mut s = false;
         for i in 0..self.degree().max(0)+1 {
@@ -339,15 +337,15 @@ where T: Num + GCD + Copy + std::fmt::Display {
     }
 }
 
-impl<T> std::fmt::Debug for Polynomial<T>
-where T: Num + GCD + Copy + std::fmt::Display {
+impl<T> Debug for Polynomial<T>
+where T: Copy + Display + One + Zero + Eq {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self)
     }
 }
 
 impl<T> Tex for Polynomial<T>
-where T: Num + GCD + Copy + std::fmt::Display + num::Signed + Tex {
+where T: Copy + Zero + One + Eq + Signed + Tex {
     fn into_tex(&self) -> String {
         let mut ans = String::new();
         let mut s = false;
@@ -386,24 +384,30 @@ where T: Num + GCD + Copy + std::fmt::Display + num::Signed + Tex {
     }
 }
 
-pub fn quantum(n : i128) -> Polynomial<i128> {
+pub fn quantum(n : i128) -> Polynomial<structures::Q> {
     if n == 0 {
         return Polynomial::zero();
     }
-    fn fact(n : i128) -> i128 {
-        (1..n+1).fold(1, |acc, e| acc * e)
-    }
     fn choose(n : i128, r: i128) -> i128 {
-        fact(n) / (fact(r) * fact(n - r))
+        let mut ans = 1;
+        for i in n-r+1..n+1 {
+            ans = ans * i;
+        }
+        for i in 1..r+1 {
+            ans = ans / i;
+        }
+        ans
     }
     let mut coeffs = Vec::new();
     for _ in 0..n {
-        coeffs.push(0)
+        coeffs.push(Fraction::zero())
     }
     for i in 0..(n-1)/2+1 {
-        coeffs[(n-1-2*i) as usize] = (1-2*(i%2)) * choose(n-1-i,i);
+        coeffs[(n-1-2*i) as usize] = Fraction::from(
+            (1-2*(i%2)) * choose(n-1-i,i)
+        );
     }
-    Polynomial::new(coeffs.iter())
+    Polynomial::new(coeffs.as_slice())
 }
 
 impl Serialisable for Polynomial<structures::Q> {
@@ -422,80 +426,161 @@ impl Serialisable for Polynomial<structures::Q> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::structures::Q;
 
     #[test]
     fn new () {
-        debug_assert_eq!(Polynomial::new(vec![1,2,3,4,0,0,0].iter()).degree(), 3);
-        debug_assert_eq!(Polynomial::new(vec![1,2,3,4,0,0,0].iter()) , Polynomial::new(vec![1,2,3,4].iter()));
-        debug_assert_eq!(Polynomial::new(vec![0,0,0].iter()).degree() , 0);
+        assert_eq!(Polynomial::<Q>::new(&[1,2,3,4,0,0,0]).degree(), 3);
+        assert_eq!(Polynomial::<Q>::new(&[1,2,3,4,0,0,0]),
+                         Polynomial::new(&[1,2,3,4])
+            );
+        assert_eq!(Polynomial::<Q>::new(&[0,0,0]).degree(), 0);
     }
 
     #[test]
     fn gen() {
-        debug_assert_eq!(Polynomial::<i128>::gen(), Polynomial::new(vec![0,1].iter()));
-        debug_assert_eq!(Polynomial::<i128>::gen().degree(), 1);
-        debug_assert_eq!("X", format!("{}", Polynomial::<i128>::gen()));
-        debug_assert_ne!(Polynomial::<i128>::gen(), Polynomial::zero());
-        debug_assert_ne!(Polynomial::<i128>::gen(), Polynomial::one());
+        assert_eq!(Polynomial::<Q>::gen(), Polynomial::new(&[Q::zero(),Q::one()]));
+        assert_eq!(Polynomial::<Q>::gen().degree(), 1);
+        assert_eq!("X", format!("{}", Polynomial::<Q>::gen()));
+        assert_ne!(Polynomial::<Q>::gen(), Polynomial::zero());
+        assert_ne!(Polynomial::<Q>::gen(), Polynomial::one());
     }
 
     #[test]
     fn additive() {
-        let a = Polynomial::new(vec![1,2,3].iter());
-        let b = Polynomial::new(vec![1,2,3].iter());
-        debug_assert_eq!(Polynomial::zero(), a - b);
+        let a = Polynomial::<Q>::new(&[1,2,3]);
+        let b = Polynomial::<Q>::new(&[1,2,3]);
+        assert_eq!(Polynomial::zero(), a - b);
     }
 
     #[test]
     fn neg() {
-        debug_assert_eq!(-Polynomial::new(vec![1,2,3].iter()), Polynomial::new(vec![-1,-2,-3].iter()));
+        assert_eq!(-Polynomial::<Q>::new(&[1,2,3]), Polynomial::new(&[-1,-2,-3]));
     }
 
     #[test]
     fn sub() {
-        debug_assert_eq!(Polynomial::new(vec![1,2,3].iter()) - Polynomial::new(vec![2,0,1,5].iter()),
-        Polynomial::new(vec![-1,2,2,-5].iter()));
+        assert_eq!(Polynomial::<Q>::new(&[1,2,3]) - Polynomial::new(&[2,0,1,5]),
+                   Polynomial::<Q>::new(&[-1,2,2,-5]));
     }
 
     #[test]
     fn mul() {
-        let a = Polynomial::new(vec![1,2,3].iter());
-        let b = Polynomial::new(vec![0,4,6].iter());
-        debug_assert_eq!(Polynomial::new(vec![0,4,14,24,18].iter()), a * b);
+        let a = Polynomial::<Q>::new(&[1,2,3]);
+        let b = Polynomial::<Q>::new(&[0,4,6]);
+        assert_eq!(Polynomial::new(&[0,4,14,24,18]), a * b);
     }
 
     #[test]
     fn div() {
-        let a = Polynomial::new(vec![16384 , - 20480 , - 45056 , 61440 , 45056 , - 70400 , - 19712 , 38720 , 3520 , - 10560 , - 176 , 1320 ,0,  -55 , 0,0].iter().rev());
-        let b = Polynomial::new(vec![0,5,0,-20,16].iter());
-        debug_assert_eq!(Polynomial::new(
-                vec![1024, 0, -2816, 0, 2816, 0, -1232, 0, 220, 0, -11, 0].iter().rev())
+        let a = Polynomial::<Q>::new(&[0, 0, -55, 0, 1320, -176, -10560, 3520, 38720, -19712, -70400, 45056, 61440, -45056, -20480, 16384]);
+        let b = Polynomial::new(&[0,5,0,-20,16]);
+        assert_eq!(Polynomial::<Q>::new(&[0, -11, 0, 220, 0, -1232, 0, 2816, 0, -2816, 0, 1024])
                 , a / b);
     }
 
     #[test]
     fn quantum_num() {
-        debug_assert_eq!(quantum(0), Polynomial::zero());
-        debug_assert_eq!(quantum(1), Polynomial::one());
-        debug_assert_eq!(quantum(2), Polynomial::gen());
-        debug_assert_eq!(quantum(3), Polynomial::new(vec![-1,0,1].iter()));
-        debug_assert_eq!(quantum(8), Polynomial::new(vec![0,-4,0,10,0,-6,0,1].iter()));
+        assert_eq!(quantum(0), Polynomial::zero());
+        assert_eq!(quantum(1), Polynomial::one());
+        assert_eq!(quantum(2), Polynomial::gen());
+        assert_eq!(quantum(3), Polynomial::new(&[-1,0,1]));
+        assert_eq!(quantum(8), Polynomial::new(&[0,-4,0,10,0,-6,0,1]));
     }
 
     #[test]
     fn gcd() {
-        fn mon(x : Polynomial<i128>) -> Polynomial<i128> {
-            if x.hightest_term() < 0 {
-                - x
-            } else {
-                x
-            }
-        }
-        debug_assert_eq!(mon(Polynomial::new(vec![1,2,1].iter()).gcd(&Polynomial::new(vec![1,1].iter()))) , Polynomial::new(vec![1,1].iter()));
-        debug_assert_eq!(mon(Polynomial::new(vec![2,4,2].iter()).gcd(&Polynomial::new(vec![4,4].iter()))) , Polynomial::new(vec![1,1].iter()));
-        debug_assert_eq!(mon(quantum(17).gcd(&quantum(15))) , Polynomial::one());
-        debug_assert_eq!(mon(quantum(17).gcd(&quantum(15))) , Polynomial::one());
-        debug_assert_eq!(mon(quantum(27).gcd(&quantum(3))) , quantum(3));
-        debug_assert_eq!(mon(quantum(27).gcd(&quantum(6))) , quantum(3));
+        assert_eq!(Polynomial::new(&[1,2,1]).partial_gcd(&Polynomial::new(&[1,1])) , Polynomial::new(&[1,1]));
+        assert_eq!(Polynomial::new(&[2,4,2]).partial_gcd(&Polynomial::new(&[4,4])) , Polynomial::new(&[1,1]));
+        assert_eq!(quantum(17).partial_gcd(&quantum(15)) , Polynomial::one());
+        assert_eq!(quantum(17).partial_gcd(&quantum(15)) , Polynomial::one());
+        assert_eq!(quantum(27).partial_gcd(&quantum(3)) , quantum(3));
+        assert_eq!(quantum(27).partial_gcd(&quantum(6)) , quantum(3));
+    }
+
+    #[test]
+    fn big_gcd() {
+        let a = Polynomial::<Q>::new(&[
+            24,
+            0,
+            -524,
+            0,
+            5056,
+            0,
+            -27152,
+            0,
+            84534,
+            0,
+            -138895,
+            0,
+            23826,
+            0,
+            445831,
+            0,
+            -1177984,
+            0,
+            1742628,
+            0,
+            -1768127,
+            0,
+            1310596,
+            0,
+            -728166,
+            0,
+            305827,
+            0,
+            -96767,
+            0,
+            22722,
+            0,
+            -3841,
+            0,
+            442,
+            0,
+            -31,
+            0,
+            1
+        ]);
+
+        let b = Polynomial::<Q>::new(&[
+            Fraction::new(304,5),
+            Fraction::new(0,1),
+            Fraction::new(21856,-15),
+            Fraction::new(0,1),
+            Fraction::new(238652,15),
+            Fraction::new(0,1),
+            Fraction::new(1527248,-15),
+            Fraction::new(0,1),
+            Fraction::new(1258064,3),
+            Fraction::new(0,1),
+            Fraction::new(17683936,-15),
+            Fraction::new(0,1),
+            Fraction::new(35414599,15),
+            Fraction::new(0,1),
+            Fraction::new(-52134644,15),
+            Fraction::new(0,1),
+            Fraction::new(57703364,15),
+            Fraction::new(0,1),
+            Fraction::new(48757748,-15),
+            Fraction::new(0,1),
+            Fraction::new(10579261,5),
+            Fraction::new(0,1),
+            Fraction::new(-1064413,1),
+            Fraction::new(0,1),
+            Fraction::new(6190517,15),
+            Fraction::new(0,1),
+            Fraction::new(-366422,3),
+            Fraction::new(0,1),
+            Fraction::new(406151,15),
+            Fraction::new(0,1),
+            Fraction::new(65266,-15),
+            Fraction::new(0,1),
+            Fraction::new(7177,15),
+            Fraction::new(0,1),
+            Fraction::new(161,-5),
+            Fraction::new(0,1),
+            Fraction::new(1,1)
+        ]);
+        print!("{}", a.partial_gcd(&b));
     }
 }
