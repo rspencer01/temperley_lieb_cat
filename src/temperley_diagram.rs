@@ -3,6 +3,7 @@ extern crate partitions;
 use crate::temperley_site::{Site, Site::*};
 use crate::temperley_link::Link;
 use crate::tex::Tex;
+use crate::serial::Serialisable;
 
 #[derive(Clone, PartialOrd, Ord)]
 pub struct TLDiagram(Vec<Link>);
@@ -354,6 +355,18 @@ impl Tex for TLDiagram {
 
     fn is_multiterm(&self) -> bool {
         false
+    }
+}
+
+impl Serialisable for TLDiagram {
+    fn serialise(&self) -> String {
+        self.0.serialise()
+    }
+
+    fn deserialise(inpt : &str) -> Self {
+        TLDiagram::new(
+            Vec::deserialise(inpt)
+        )
     }
 }
 

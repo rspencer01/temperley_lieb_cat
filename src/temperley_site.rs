@@ -1,3 +1,5 @@
+use crate::serial::Serialisable;
+
 /// A site in a Temperley-Lieb diagram.
 ///
 /// May reside on the left/bottom (source) or the top/right (target)
@@ -29,10 +31,35 @@ impl std::fmt::Display for Site {
 }
 
 impl Site {
+    /// Perform the standard involution on the site, swapping the
+    /// source and target.
     pub fn involute(self) -> Site {
         match self {
             Source(i) => Target(i),
             Target(i) => Source(i),
+        }
+    }
+}
+
+impl Serialisable for Site {
+    fn serialise(&self) -> String {
+        match self {
+            Source(i) => format!("s{}",i),
+            Target(i) => format!("t{}",i)
+        }
+    }
+
+    fn deserialise(inpt : &str) -> Self {
+        match inpt.chars().nth(0).unwrap() {
+            's' => Source(
+                inpt[1..].parse()
+                .expect("Cannot deserialise site - index not parsable")
+            ),
+            't' => Target(
+                inpt[1..].parse()
+                .expect("Cannot deserialise site - index not parsable")
+            ),
+            _ => panic!("Cannot deserialise site - first character should be 's' or 't'")
         }
     }
 }

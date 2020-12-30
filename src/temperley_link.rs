@@ -1,4 +1,5 @@
 use crate::temperley_site::{Site, Site::*};
+use crate::serial::Serialisable;
 
 #[derive(Copy, Clone, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Link(pub Site, pub Site);
@@ -25,10 +26,13 @@ impl Link {
         }
     }
 
+    /// Perform the standard involution on this link, swapping sources and targets.
     pub fn involute(self) -> Link {
         Link::new(self.0.involute(), self.1.involute())
     }
 
+    /// Shift the link "down" or "right" by a number of units on the source
+    /// and target lines
     pub fn shift(self, n : usize, m : usize) -> Link {
         match self {
             Link(Source(i), Source(j)) => {
@@ -47,3 +51,14 @@ impl Link {
     }
 }
 
+impl Serialisable for Link {
+    fn serialise(&self) -> String {
+        format!("{}-{}", self.0.serialise(), self.1.serialise())
+    }
+
+    fn deserialise(inpt : &str) -> Self {
+        let split : Vec<_> = inpt.split("-").collect();
+        assert!(split.len() == 2, "Cannot deserialise input into link");
+        Link::new(Site::deserialise(split[0]), Site::deserialise(split[1]))
+    }
+}
