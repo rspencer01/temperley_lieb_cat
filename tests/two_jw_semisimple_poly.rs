@@ -1,18 +1,25 @@
+/// If $n = a + b$ and $e = JW_a \otimes JW_b$ then the algebra $e TL_n e$
+/// is semisimple and a polynomial algebra.
 use temperley_lieb_cat::fraction::Fraction;
 use temperley_lieb_cat::poly::{quantum, Polynomial};
-use temperley_lieb_cat::temperley::{TLMorphism, jw};
+use temperley_lieb_cat::{TLMorphism, jw};
+use temperley_lieb_cat::structures::Q;
 use num::Zero;
+
+type R = Fraction<Polynomial<Q>>;
 
 #[test]
 fn two_jw_semisimple_poly() {
-    type R = Fraction<Polynomial<i128>>;
     let n1 : i128 = 3;
     let n2 : i128 = 3;
-    let e = jw(n1 as usize) | jw(n2 as usize);
+    let e : TLMorphism<R> = jw(n1 as usize) | jw(n2 as usize);
     let mut phi = Vec::new();
     for i in 0..n1 as usize+1 {
-        println!("Constructing \\phi_{}", i);
-        phi.push(e.clone() *TLMorphism::U((n1+n2) as usize, n1 as usize, i) * e.clone() * (R::from(quantum(n1)) * quantum(n2)));
+        phi.push(
+            e.clone() *
+            TLMorphism::big_u((n1+n2) as usize, n1 as usize, i) *
+            e.clone() *
+            R::from(quantum(n1) * quantum(n2)));
     }
 
     for k in 0..n1 as usize {
@@ -26,7 +33,6 @@ fn two_jw_semisimple_poly() {
 
     let mut t = TLMorphism::id((n1+n2) as usize);
     for i in 0..n1+1 {
-        println!("Adding term {}", i);
         t = t * (phi[1].clone() - TLMorphism::<R>::id((n1+n2) as usize) * R::from(quantum(i) * quantum(n1+n2-i+1)));
     }
     assert!(t.is_zero());
