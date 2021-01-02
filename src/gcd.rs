@@ -8,12 +8,20 @@ pub trait GCD {
 pub trait PartialGCD {
     /// Find a (large) common factor of self and other
     fn partial_gcd(&self, other: &Self) -> Self;
+
+    /// Is the number ``small''
+    fn is_small(&self) -> bool;
 }
 
 impl<T:GCD> PartialGCD for T {
     #[inline(always)]
     fn partial_gcd(&self, other: &Self) -> Self {
         self.gcd(other)
+    }
+
+    #[inline(always)]
+    fn is_small(&self) -> bool {
+        false
     }
 }
 

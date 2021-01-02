@@ -1,72 +1,71 @@
-use num::Num;
+use num::{Num, One, Zero, Signed};
 use std::ops::{Add, Sub, Mul, Div, Neg, Rem};
 use std::fmt::{Debug, Display};
 
 use crate::gcd::PartialGCD;
-use crate::num::{One, Zero, Signed};
 use crate::tex::Tex;
 use crate::serial::Serialisable;
-use crate::structures::Field;
+use crate::structures::NumOps;
 use crate::structures;
 use crate::fraction::Fraction;
 
-const MAX_DEGREE : usize = 200;
-
 /// A polynomial in a single variable over a _field_.
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub struct Polynomial<T : Copy> {
-    coeffs : [T; MAX_DEGREE],
-    degree : usize,
-}
+///
+/// It is implemented as a vector of coefficients, where the
+/// highest coefficient is always zero.  The length is at least
+/// two.
+#[derive(Clone, PartialEq, Eq)]
+pub struct Polynomial<T>(Vec<T>);
 
-impl<T> Polynomial<T>
-where T : Copy {
+impl<T> Polynomial<T> {
     fn degree(&self) -> usize {
-        self.degree
+        self.0.len() - 2
     }
 
-    fn hightest_term(&self) -> T {
-        self.coeffs[self.degree()]
+    fn hightest_term(&self) -> &T {
+        &self.0[self.0.len()-2]
+    }
+
+    fn coeff(&self, i : usize) -> &T {
+        if i > self.degree() {
+            self.0.last().unwrap()
+        } else {
+            self.0.get(i).unwrap()
+        }
     }
 }
 
 impl<T> Polynomial<T>
-where T : Copy + Zero {
+where T : Clone + Zero + Eq {
     pub fn new<V>(in_coeffs: &[V]) -> Polynomial<T>
-    where V : Into<T> + Copy {
-        let mut coeffs = [T::zero() ; MAX_DEGREE];
-        let mut degree = 0;
-        let mut it = in_coeffs.iter();
-        for i in 0..MAX_DEGREE {
-            if let Some(x) = it.next() {
-                coeffs[i] = (*x).into();
-                if !coeffs[i].is_zero() {
-                    degree = i;
-                }
-            } else {
-                break;
-            }
+    where V : Clone + Into<T> {
+       let mut coeffs : Vec<T> = in_coeffs.iter()
+           .map(|x|
+                x.clone()
+                .into()
+            )
+           .collect();
+       while coeffs.last() == Some(&T::zero()) {
+           coeffs.pop();
        }
-       assert!(it.next().is_none(), "Overflow in polynomial construction");
-       Polynomial {
-           coeffs,
-           degree,
+       if coeffs.is_empty() {
+           coeffs.push(T::zero());
        }
+       coeffs.push(T::zero());
+       Polynomial(
+           coeffs
+       )
     }
 
     fn shift(&mut self, n : usize) {
-        for i in (n..MAX_DEGREE).rev() {
-            self.coeffs[i] = self.coeffs[i-n];
-        }
-        for i in 0..n {
-            self.coeffs[i] = T::zero();
-        }
-        self.degree += n;
+        let mut coeffs = vec![T::zero();n];
+        coeffs.extend(self.0.clone().into_iter());
+        self.0 = coeffs;
     }
 }
 
 impl<T> Polynomial<T>
-where T : Copy + Zero + One {
+where T : Clone + Eq + Zero + One {
     pub fn gen() -> Self {
         Polynomial::new(&[T::zero(), T::one()])
     }
@@ -74,7 +73,8 @@ where T : Copy + Zero + One {
 
 
 impl<T> Polynomial<T>
-where T : Copy + Field + Eq {
+where T : Eq + Zero + One + Clone,
+      for<'r> &'r T : NumOps<&'r T, T> {
     fn div_mod(&self, other: &Self) -> (Self, Self) {
         assert!(!other.is_zero(), "Dividing polynomial by zero");
         if self.is_zero() {
@@ -83,90 +83,132 @@ where T : Copy + Field + Eq {
         if *self == *other {
             return (Polynomial::one(), Polynomial::zero());
         }
-        if *self == -*other {
+        if *self == -other {
             return (-Polynomial::one(), Polynomial::zero());
         }
         if self.degree() < other.degree() {
-            return (Polynomial::zero(), *self);
+            return (Polynomial::zero(), self.clone());
         }
-        let mut rem = *self;
-        let mut ans = [T::zero() ; MAX_DEGREE];
+        let mut rem = self.clone();
+        let mut ans = vec![T::zero() ; self.degree()+1];
         for i in (other.degree()..self.degree()+1).rev() {
-            if rem.coeffs[i].is_zero() {
+            //TODO(robert) is this tautological?
+            if i >= rem.degree()+1 || rem.coeff(i).is_zero()  {
                 continue;
             }
             // Because T is guaranteed to be a field, this gives no remainder
             let m = rem.hightest_term() / other.hightest_term();
-            let mut diff = *other * m;
+            let mut diff = other.clone() * m.clone();
             diff.shift(i-other.degree());
             rem = rem - diff;
-            ans[i - other.degree] = m;
+            ans[i - other.degree()] = m;
             assert!(rem.degree() < i || i == 0);
         }
         (Polynomial::new(&ans), rem)
     }
 }
 
-impl<T> Add for Polynomial<T>
-where T : Copy + Add + Zero {
-    type Output = Self;
+impl<T> Add<Polynomial<T>> for Polynomial<T>
+where T : Clone + Eq + Zero,
+      for<'r> &'r T : NumOps<&'r T, T> {
+    type Output = Polynomial<T>;
 
-    fn add(self, other: Self) -> Self {
-        let mut ans = self.coeffs;
-        for i in 0..other.degree()+1 {
-            ans[i] = ans[i] + other.coeffs[i];
+    fn add(self, other: Polynomial<T>) -> Polynomial<T> {
+        &self + &other
+    }
+}
+
+impl<T> Add<&Polynomial<T>> for &Polynomial<T>
+where T : Clone + Add + Zero + Eq,
+      for<'r> &'r T : NumOps<&'r T, T> {
+    type Output = Polynomial<T>;
+
+    fn add(self, other: &Polynomial<T>) -> Polynomial<T> {
+        let deg = self.degree().max(other.degree());
+        let mut ans = vec![T::zero(); deg+1];
+        for i in 0..deg+1 {
+            ans[i] = self.coeff(i) + other.coeff(i)
         }
-        let mut degree = 0;
-        for i in 0..self.degree().max(other.degree())+1 {
-            if !ans[i].is_zero() {
-                degree = i;
-            }
-        }
-        Polynomial{
-            coeffs: ans,
-            degree,
-        }
+        Polynomial::new(
+            &ans,
+        )
     }
 }
 
 impl<T> Neg for Polynomial<T>
-where T : Copy + Zero + Neg<Output=T> {
-    type Output = Self;
+where T : Zero,
+      for<'r> &'r T : NumOps<&'r T, T> {
+    type Output = Polynomial<T>;
 
-    fn neg(self) -> Self {
-        let mut ans = [T::zero(); MAX_DEGREE];
-        for i in 0..self.degree()+1 { ans[i] = -self.coeffs[i] }
-        Polynomial{
-            coeffs:ans,
-            degree:self.degree(),
-        }
+    fn neg(self) -> Polynomial<T> {
+        -&self
     }
 }
 
-impl<T> Sub for Polynomial<T>
-where T : Copy + Zero + Sub<Output=T> {
-    type Output = Self;
+impl<T> Neg for &Polynomial<T>
+where T : Zero,
+      for<'r> &'r T : NumOps<&'r T, T> {
+    type Output = Polynomial<T>;
 
-    fn sub(self, other: Self) -> Self {
-        let mut ans = self.coeffs;
+    fn neg(self) -> Polynomial<T> {
+        Polynomial(
+            self.0.iter().map(|x| -x).collect(),
+        )
+    }
+}
+
+impl<T> Sub<Polynomial<T>> for Polynomial<T>
+where T : Clone + Eq + Zero,
+      for<'r> &'r T : NumOps<&'r T, T> {
+    type Output = Polynomial<T>;
+
+    fn sub(self, other: Polynomial<T>) -> Polynomial<T> {
+        &self - &other
+    }
+}
+
+impl<T> Sub<&Polynomial<T>> for &Polynomial<T>
+where T : Clone + Add + Zero + Eq,
+      for<'r> &'r T : NumOps<&'r T, T> {
+    type Output = Polynomial<T>;
+
+    fn sub(self, other: &Polynomial<T>) -> Polynomial<T> {
+        let deg = self.degree().max(other.degree());
+        let mut ans = vec![T::zero(); deg+1];
+        for i in 0..self.degree()+1 {
+            ans[i] = self.coeff(i).clone();
+        }
         for i in 0..other.degree()+1 {
-            ans[i] = ans[i] - other.coeffs[i];
+            ans[i] = &ans[i] - other.coeff(i)
         }
-        Polynomial::new(&ans)
+        Polynomial::new(
+            &ans,
+        )
     }
 }
 
-impl<T> Mul for Polynomial<T>
-where T : Copy + Zero + Add + Mul<Output=T> {
-    type Output = Self;
+impl<T> Mul<Polynomial<T>> for Polynomial<T>
+where T : Clone + Eq + Zero,
+      for<'r> &'r T : NumOps<&'r T, T> {
+    type Output = Polynomial<T>;
 
-    fn mul(self, other: Self) -> Self {
-        assert!(self.degree() + other.degree() < MAX_DEGREE, "Attempt to multiply polynomials with overflow");
-        let mut ans = [T::zero() ; MAX_DEGREE];
+    fn mul(self, other: Polynomial<T>) -> Polynomial<T> {
+        &self * &other
+    }
+}
+
+impl<T> Mul<&Polynomial<T>> for &Polynomial<T>
+where T : Clone + Eq + Zero,
+      for<'r> &'r T : NumOps<&'r T, T> {
+    type Output = Polynomial<T>;
+
+    fn mul(self, other: &Polynomial<T>) -> Polynomial<T> {
         let max_resulting_degree = self.degree() + other.degree();
-        for i in 0..max_resulting_degree + 1 {
+        let mut ans = vec![T::zero() ; max_resulting_degree + 1];
+        for i in 0..max_resulting_degree + 2 {
             for j in i.saturating_sub(other.degree())..i.min(self.degree())+1 {
-                    ans[i] = ans[i] + self.coeffs[j] * other.coeffs[i-j];
+                // In the land of Mordor, where the shadows lie...
+                ans[i] = &ans[i] + &(self.coeff(j) * other.coeff(i-j));
             }
         }
         Polynomial::new(&ans)
@@ -174,59 +216,62 @@ where T : Copy + Zero + Add + Mul<Output=T> {
 }
 
 impl<T> Mul<T> for Polynomial<T>
-where T : Copy + One + Mul + Eq {
+where T : Clone + Zero + Eq ,
+      for<'r> &'r T : NumOps<&'r T, T> {
     type Output = Self;
 
     fn mul(self, other: T) -> Self {
-        if other.is_one() {
-            return self
-        }
-        let mut ans = self.coeffs;
-        for i in 0..self.degree()+1 {
-            ans[i] = ans[i] * other;
-        }
-        Polynomial{
-            coeffs:ans,
-            degree:self.degree()
-        }
+        Polynomial::new(
+            &self.0.iter().map(|x| x * &other).collect::<Vec<_>>(),
+        )
     }
 }
 
 impl<T> Div<T> for Polynomial<T>
-where T : Copy + Zero + Div<Output=T> {
+where T : Clone + Zero + Eq ,
+      for<'r> &'r T : NumOps<&'r T, T> {
     type Output = Self;
 
     fn div(self, other: T) -> Self {
         assert!(!other.is_zero(), "Cannot divide polynomial by zero");
-        let mut ans = self.coeffs;
-        for i in 0..self.degree()+1 {
-            ans[i] = ans[i] / other;
-        }
-        Polynomial{
-            coeffs:ans,
-            degree:self.degree()
-        }
+        Polynomial::new(
+            &self.0.iter().map(|x| x / &other).collect::<Vec<_>>(),
+        )
     }
 }
 
-impl<T> Div for Polynomial<T>
-where T : Field + Copy + Eq {
-    type Output = Self;
+impl<T> Div<Polynomial<T>> for Polynomial<T>
+where T : Eq + Zero + One + Clone,
+      for<'r> &'r T : NumOps<&'r T, T>{
+    type Output = Polynomial<T>;
 
-    fn div(self, other: Self) -> Self {
-        self.div_mod(&other).0
+    fn div(self, other: Polynomial<T>) -> Polynomial<T> {
+        &self / &other
+    }
+}
+
+
+impl<T> Div<&Polynomial<T>> for &Polynomial<T>
+where T : Eq + Zero + One + Clone,
+      for<'r> &'r T : NumOps<&'r T, T>{
+    type Output = Polynomial<T>;
+
+    fn div(self, other: &Polynomial<T>) -> Polynomial<T> {
+        self.div_mod(other).0
     }
 }
 
 impl<T> One for Polynomial<T>
-where T : Copy + One + Zero {
+where T : Clone + Eq + Zero + One,
+      for<'r> &'r T : NumOps<&'r T, T> {
     fn one() -> Self {
         Polynomial::new(&[T::one()])
     }
 }
 
 impl<T> Zero for Polynomial<T>
-where T : Copy + Zero {
+where T : Clone + Zero + Eq,
+      for<'r> &'r T : NumOps<&'r T, T> {
     fn zero() -> Self {
         let c : [T;0] = [];
         Polynomial::new(&c)
@@ -237,18 +282,30 @@ where T : Copy + Zero {
     }
 }
 
-impl<T> Rem for Polynomial<T>
-where T : Copy + Field + Eq {
-    type Output = Self;
+impl<T> Rem<Polynomial<T>> for Polynomial<T>
+where T : Eq + Zero + One + Clone,
+      for<'r> &'r T : NumOps<&'r T, T>{
+    type Output = Polynomial<T>;
 
-    fn rem(self, other:Self) -> Self {
+    fn rem(self, other: Polynomial<T>) -> Polynomial<T> {
+        &self % &other
+    }
+}
+
+impl<T> Rem<&Polynomial<T>> for &Polynomial<T>
+where T : Eq + Zero + One + Clone,
+      for<'r> &'r T : NumOps<&'r T, T> {
+    type Output = Polynomial<T>;
+
+    fn rem(self, other:&Polynomial<T>) -> Polynomial<T> {
         self.div_mod(&other).1
     }
 }
 
 
 impl<T> Num for Polynomial<T>
-where T : Copy + Field + Eq {
+where T : Clone + Eq + One + Zero,
+      for<'r> &'r T : NumOps<&'r T, T> {
     type FromStrRadixErr = ();
 
     fn from_str_radix(_str: &str, _radix: u32) -> Result<Self, Self::FromStrRadixErr> {
@@ -257,7 +314,8 @@ where T : Copy + Field + Eq {
 }
 
 impl<T> Signed for Polynomial<T>
-where T : Copy + Field + Eq + Signed {
+where T : Clone + Eq + One + Zero + Signed,
+      for<'r> &'r T : NumOps<&'r T, T> {
     fn is_positive(&self) -> bool {
         self.hightest_term().is_positive()
     }
@@ -285,17 +343,17 @@ where T : Copy + Field + Eq + Signed {
 
 impl PartialGCD for Polynomial<structures::Q> {
     fn partial_gcd(&self, other: &Polynomial<structures::Q>) -> Polynomial<structures::Q> {
-        if (self.coeffs.iter().fold(0, |a, x| x.den().abs().max(a)) > 0xffffffff) ||
-           (self.coeffs.iter().fold(0, |a, x| x.num().abs().max(a)) > 0xffffffff) ||
-           (other.coeffs.iter().fold(0, |a, x| x.den().abs().max(a)) > 0xfffffffff) ||
-           (other.coeffs.iter().fold(0, |a, x| x.num().abs().max(a)) > 0xfffffffff) {
+        if (self.0.iter().fold(0, |a, x| x.den().abs().max(a)) > 0xffffffff) ||
+           (self.0.iter().fold(0, |a, x| x.num().abs().max(a)) > 0xffffffff) ||
+           (other.0.iter().fold(0, |a, x| x.den().abs().max(a)) > 0xfffffffff) ||
+           (other.0.iter().fold(0, |a, x| x.num().abs().max(a)) > 0xfffffffff) {
             return Polynomial::one();
         }
         if self.degree() < other.degree() {
             return other.partial_gcd(self);
         }
         if other.is_zero() {
-            return *self;
+            return self.clone();
         }
         let div_rem = self.div_mod(other);
         if div_rem.0.is_zero() {
@@ -305,26 +363,30 @@ impl PartialGCD for Polynomial<structures::Q> {
             //let c = re.coeffs.iter().fold(re.hightest_term().den(), |x,y | x * y.den() / x.gcd(&y.den()));
             let c = re.hightest_term();
             if !c.is_zero() {
-                re = re / c;
+                re = re.clone() / c.clone();
             }
             let sub = other.partial_gcd(&re);
-            sub / sub.hightest_term()
+            sub.clone() / sub.clone().hightest_term().clone()
         }
+    }
+
+    fn is_small(&self) -> bool {
+        self.degree() < 5
     }
 }
 
 impl<T> Display for Polynomial<T>
-where T: Copy + One + Zero + Display + Eq {
+where T: One + Zero + Display + Eq {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let mut s = false;
-        for i in 0..self.degree().max(0)+1 {
-            if !self.coeffs[i].is_zero() || (i == 0 && self.degree() == 0) {
+        for i in 0..self.degree()+1 {
+            if !self.coeff(i).is_zero() || (i == 0 && self.degree() == 0) {
                 if s {
                     write!(f, " + ")?;
                 }
                 s = true;
-                if !self.coeffs[i].is_one() || i == 0 {
-                    write!(f, "{}", self.coeffs[i])?;
+                if !self.coeff(i).is_one() || i == 0 {
+                    write!(f, "{}", self.coeff(i))?;
                 }
                 if i > 1 {
                     write!(f, "X^{}", i)?;
@@ -338,35 +400,36 @@ where T: Copy + One + Zero + Display + Eq {
 }
 
 impl<T> Debug for Polynomial<T>
-where T: Copy + Display + One + Zero + Eq {
+where T: Display + One + Zero + Eq + Clone {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self)
     }
 }
 
 impl<T> Tex for Polynomial<T>
-where T: Copy + Zero + One + Eq + Signed + Tex {
+where T: Zero + One + Eq + Signed + Tex,
+      for<'r> &'r T : NumOps<&'r T, T> {
     fn into_tex(&self) -> String {
         let mut ans = String::new();
         let mut s = false;
         for i in 0..self.degree().max(0)+1 {
-            if !self.coeffs[i].is_zero() || (i == 0 && self.degree() == 0) {
+            if !self.coeff(i).is_zero() || (i == 0 && self.degree() == 0) {
                 if s {
-                    if self.coeffs[i].is_positive() {
+                    if self.coeff(i).is_positive() {
                         ans += " + ";
                     }
                 }
                 s = true;
-                if !self.coeffs[i].abs().is_one() || i == 0 {
-                    if self.coeffs[i].is_multiterm() {
+                if !self.coeff(i).abs().is_one() || i == 0 {
+                    if self.coeff(i).is_multiterm() {
                         ans += "\\left(";
                     }
-                    ans += &self.coeffs[i].into_tex();
-                    if self.coeffs[i].is_multiterm() {
+                    ans += &self.coeff(i).into_tex();
+                    if self.coeff(i).is_multiterm() {
                         ans += "\\right)";
                     }
                 }
-                if self.coeffs[i].is_negative() && (-self.coeffs[i]).is_one() && i > 0 {
+                if self.coeff(i).is_negative() && (-self.coeff(i)).is_one() && i > 0 {
                     ans += " - ";
                 }
                 if i > 1 {
@@ -380,7 +443,7 @@ where T: Copy + Zero + One + Eq + Signed + Tex {
     }
 
     fn is_multiterm(&self) -> bool {
-        self.coeffs.iter().filter(|x| !x.is_zero()).count() > 1
+        self.0.iter().filter(|x| !x.is_zero()).count() > 1
     }
 }
 
@@ -412,7 +475,7 @@ pub fn quantum(n : i128) -> Polynomial<structures::Q> {
 
 impl Serialisable for Polynomial<structures::Q> {
     fn serialise(&self) -> String {
-        self.coeffs[..self.degree+1].to_vec().serialise()
+        self.0.serialise()
     }
 
     fn deserialise(inpt : &str) -> Self {
@@ -423,13 +486,21 @@ impl Serialisable for Polynomial<structures::Q> {
     }
 }
 
+impl<T> NumOps<Polynomial<T>, Polynomial<T>> for Polynomial<T>
+where T : Clone + NumOps<T, T> + Signed + Zero + Eq,
+      for<'r> &'r T: NumOps<&'r T, T> {}
+
+impl<'a , T : 'a> NumOps<&'a Polynomial<T>, Polynomial<T>> for &'a Polynomial<T>
+where T : Clone + NumOps<T, T> + Signed + Zero + Eq,
+      for<'r> &'r T: NumOps<&'r T, T> {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use super::structures::Q;
 
     #[test]
-    fn new () {
+    fn new() {
         assert_eq!(Polynomial::<Q>::new(&[1,2,3,4,0,0,0]).degree(), 3);
         assert_eq!(Polynomial::<Q>::new(&[1,2,3,4,0,0,0]),
                          Polynomial::new(&[1,2,3,4])

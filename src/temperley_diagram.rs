@@ -59,7 +59,13 @@ impl TLDiagram {
     }
 
     pub fn u(n :usize, i : usize) -> TLDiagram {
-        TLDiagram::from_tableauxs(n, i+1..i+2, i+1..i+2)
+        let mut ans : Vec<_> = (1..i).map(|x| Link::new(Source(x), Target(x))).collect();
+        ans.push(Link::new(Source(i), Source(i+1)));
+        ans.push(Link::new(Target(i), Target(i+1)));
+        ans.extend((i+2..n+1).map(|x| Link::new(Source(x), Target(x))));
+        TLDiagram::new(
+            ans
+        )
     }
 
     pub fn U(n :usize, i : usize, j : usize) -> TLDiagram {
@@ -305,6 +311,20 @@ impl std::ops::BitOr for TLDiagram {
     type Output = TLDiagram;
 
     fn bitor(mut self, other: TLDiagram) -> TLDiagram {
+        let n = self.domain();
+        let m = self.co_domain();
+        for lnk in other.0.iter() {
+            self.0.push(lnk.shift(n,m));
+        }
+        self.0.sort();
+        self
+    }
+}
+
+impl std::ops::BitOr<&TLDiagram> for TLDiagram {
+    type Output = TLDiagram;
+
+    fn bitor(mut self, other: &TLDiagram) -> TLDiagram {
         let n = self.domain();
         let m = self.co_domain();
         for lnk in other.0.iter() {

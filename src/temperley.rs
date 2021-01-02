@@ -1,16 +1,16 @@
+extern crate num;
+use num::{Num, Zero, Signed};
 use std::ops::{Add, Sub, Mul, Div, Neg, BitOr};
 use std::collections::HashMap;
 use crate::temperley_diagram::TLDiagram;
 use crate::poly::{quantum, Polynomial};
 use crate::fraction::Fraction;
-use crate::num::{Num, Zero, Signed};
 use crate::tex::Tex;
 use crate::serial::Serialisable;
-use crate::structures::{Field, Q};
+use crate::structures::{NumOps, Q};
 
 #[derive(Clone, Debug)]
-pub struct TLMorphism<R>
-where R : Copy + Clone + Num {
+pub struct TLMorphism<R> {
     pub coeffs : HashMap<TLDiagram,R>,
     domain : usize,
     co_domain : usize,
@@ -18,22 +18,23 @@ where R : Copy + Clone + Num {
     pub right_kills : Vec<usize>,
 }
 
-impl<R:Copy + Clone + Num + Zero> TLMorphism<R> {
+impl<R:Clone + Num + Zero> TLMorphism<R>
+where for<'r> &'r R : NumOps<&'r R, R> {
     pub fn new(coeffs : Vec<(TLDiagram, R)>, delta: Option<R>) -> TLMorphism<R> {
         let representative_diagram = &coeffs.first()
             .expect("Attempt to construct empty morphism")
             .0;
         let domain = representative_diagram.domain();
         let co_domain = representative_diagram.co_domain();
-        let mut ans = HashMap::new();
+        let mut ans : HashMap<TLDiagram, R> = HashMap::new();
         for (d,v) in coeffs.iter() {
             assert!(d.domain() == domain);
             assert!(d.co_domain() == co_domain);
             if !v.is_zero() {
                 if ans.contains_key(d) {
-                    ans.insert(d.clone(), ans[d] + *v);
+                    ans.insert(d.clone(), &ans[d] + v);
                 } else {
-                    ans.insert(d.clone(), *v);
+                    ans.insert(d.clone(), v.clone());
                 }
             }
         }
@@ -41,16 +42,16 @@ impl<R:Copy + Clone + Num + Zero> TLMorphism<R> {
             ans.insert(TLDiagram::any(domain, co_domain), R::zero());
         }
         let mut right_kills = Vec::new();
-        if let Some(delta) = delta {
+        if let Some(delta) = delta.clone() {
             let mut pows = vec![R::one(); co_domain];
             for i in 1.. pows.len() {
-                pows[i] = pows[i-1] * delta;
+                pows[i] = &pows[i-1] * &delta;
             }
             for i in 1..co_domain{
                 if TLMorphism::new(
                     ans.iter().map(|(dp, vp)|{
                         let m = dp.clone() * TLDiagram::u(co_domain, i);
-                        (m.1, pows[m.0] * *vp)
+                        (m.1, &pows[m.0] * vp)
                     }).collect(),
                     None
                 ).is_zero() {
@@ -77,26 +78,26 @@ impl<R:Copy + Clone + Num + Zero> TLMorphism<R> {
 
     fn ring_point(&self, other : &TLMorphism<R>) -> Option<R> {
         assert!(self.ring_compatible(other));
-        match self.delta {
-            None => other.delta,
+        match self.delta.clone() {
+            None => other.delta.clone(),
             Some(x) => Some(x),
         }
     }
 
     pub fn repoint(&mut self, delta : Option<R>) {
-        self.delta = delta;
+        self.delta = delta.clone();
         let co_domain = self.co_domain();
         let mut right_kills = Vec::new();
         if delta.is_some() {
             let mut pows = vec![R::one(); co_domain];
             for i in 1.. pows.len() {
-                pows[i] = pows[i-1]*delta.unwrap();
+                pows[i] = &pows[i-1]*delta.as_ref().unwrap();
             }
             for i in 1..co_domain{
                 if TLMorphism::new(
                     self.coeffs.iter().map(|(dp, vp)|{
                         let m = dp.clone() * TLDiagram::u(co_domain, i);
-                        (m.1, pows[m.0] * *vp)
+                        (m.1, &pows[m.0] * vp)
                     }).collect(),
                     None
                 ).is_zero() {
@@ -117,8 +118,8 @@ impl<R:Copy + Clone + Num + Zero> TLMorphism<R> {
 
     pub fn involute(&self) -> TLMorphism<R> {
         TLMorphism::new(
-            self.coeffs.iter().map(|(k, v)| (k.clone().involute(), *v)).collect(),
-            self.delta
+            self.coeffs.iter().map(|(k, v)| (k.clone().involute(), v.clone())).collect(),
+            self.delta.clone()
         )
     }
 
@@ -145,7 +146,7 @@ impl<R:Copy + Clone + Num + Zero> TLMorphism<R> {
     }
 
     pub fn is_idempotent(&self) -> bool {
-        self.clone() * self.clone() == *self
+        self * &self == *self
     }
 
     pub fn support(&self) -> Vec<TLDiagram> {
@@ -158,27 +159,27 @@ impl<R:Copy + Clone + Num + Zero> TLMorphism<R> {
     pub fn turn_down(&self, i : isize) -> TLMorphism<R> {
         TLMorphism::new(
             self.coeffs.iter()
-            .map(|(k,v)| (k.turn_down(i), *v))
+            .map(|(k,v)| (k.turn_down(i), v.clone()))
             .collect(),
-            self.delta
+            self.delta.clone()
         )
     }
 
     pub fn turn_up(&self, i : isize) -> TLMorphism<R> {
         TLMorphism::new(
             self.coeffs.iter()
-            .map(|(k,v)| (k.turn_up(i), *v))
+            .map(|(k,v)| (k.turn_up(i), v.clone()))
             .collect(),
-            self.delta
+            self.delta.clone()
         )
     }
 
     pub fn rotate(&self, i : isize) -> TLMorphism<R> {
         TLMorphism::new(
             self.coeffs.iter()
-            .map(|(k,v)| (k.rotate(i), *v))
+            .map(|(k,v)| (k.rotate(i), v.clone()))
             .collect(),
-            self.delta
+            self.delta.clone()
         )
     }
 }
@@ -188,15 +189,16 @@ pub fn jw(n : usize) -> TLMorphism<Fraction<Polynomial<Q>>> {
     jw.repoint(Some(Polynomial::gen().into()));
     for i in 1..n {
         let jwp = jw | TLMorphism::id(1);
-        let jwc = jwp.clone() * TLMorphism::u(i+1,i);
-        let jwc = jwc * jwp.clone();
-        let jwc = jwc * (Fraction::from(quantum(i as i128)) / quantum(i as i128+1));
+        let jwc = &jwp * &TLMorphism::u(i+1,i);
+        let jwc = &jwc * &jwp;
+        let jwc = jwc * Fraction::new(quantum(i as i128), quantum(i as i128+1));
         jw = jwp - jwc;
     }
     jw
 }
 
-impl<R:Copy + Clone + Num + PartialEq> PartialEq for TLMorphism<R> {
+impl<R: Clone + Num + PartialEq> PartialEq for TLMorphism<R>
+where for<'r> &'r R : NumOps<&'r R, R> {
     fn eq(&self, other : &TLMorphism<R>) -> bool {
         if self.co_domain() != other.co_domain() {
             return false;
@@ -218,31 +220,52 @@ impl<R:Copy + Clone + Num + PartialEq> PartialEq for TLMorphism<R> {
     }
 }
 
-impl<R:Copy + Clone + Num> Add for TLMorphism<R> {
+impl<R: Clone + Num> Add<TLMorphism<R>> for TLMorphism<R>
+where for<'r> &'r R : NumOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
     fn add(self, other: TLMorphism<R>) -> TLMorphism<R> {
+        &self + &other
+    }
+}
+
+impl<R: Clone + Num> Add<&TLMorphism<R>> for &TLMorphism<R>
+where for<'r> &'r R : NumOps<&'r R, R> {
+    type Output = TLMorphism<R>;
+
+    fn add(self, other: &TLMorphism<R>) -> TLMorphism<R> {
         let delta = self.ring_point(&other);
         let mut ans = Vec::new();
-        ans.extend(self.coeffs.into_iter());
-        ans.extend(other.coeffs.into_iter());
+        ans.extend(self.coeffs.iter().map(|(k,v)| (k.clone(), v.clone())));
+        ans.extend(other.coeffs.iter().map(|(k,v)| (k.clone(), v.clone())));
         TLMorphism::new(ans, delta)
     }
 }
 
-impl<R:Copy + Clone + Num + Neg<Output=R>> Sub for TLMorphism<R> {
+impl<R: Clone + Num + Neg<Output=R>> Sub<TLMorphism<R>> for TLMorphism<R>
+where for<'r> &'r R : NumOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
     fn sub(self, other: TLMorphism<R>) -> TLMorphism<R> {
+        &self - &other
+    }
+}
+
+impl<R: Clone + Num + Neg<Output=R>> Sub<&TLMorphism<R>> for &TLMorphism<R>
+where for<'r> &'r R : NumOps<&'r R, R> {
+    type Output = TLMorphism<R>;
+
+    fn sub(self, other: &TLMorphism<R>) -> TLMorphism<R> {
         let delta = self.ring_point(&other);
         let mut ans = Vec::new();
-        ans.extend(self.coeffs.into_iter());
-        ans.extend(other.coeffs.into_iter().map(|(k,v)|(k,-v)));
+        ans.extend(self.coeffs.iter().map(|(k,v)| (k.clone(), v.clone())));
+        ans.extend(other.coeffs.iter().map(|(k,v)|(k.clone(), -v.clone())));
         TLMorphism::new(ans, delta)
     }
 }
 
-impl<R:Copy + Clone + Num + Neg<Output=R>> Neg for TLMorphism<R> {
+impl<R: Clone + Num + Neg<Output=R>> Neg for TLMorphism<R>
+where for<'r> &'r R : NumOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
     fn neg(self) -> TLMorphism<R> {
@@ -255,15 +278,25 @@ impl<R:Copy + Clone + Num + Neg<Output=R>> Neg for TLMorphism<R> {
     }
 }
 
-impl<R:Copy + Clone + Num> Mul for TLMorphism<R> {
+impl<R: Clone + Num> Mul<TLMorphism<R>> for TLMorphism<R>
+where for<'r> &'r R : NumOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
     fn mul(self, other: TLMorphism<R>) -> TLMorphism<R> {
+        &self * &other
+    }
+}
+
+impl<R: Clone + Num> Mul<&TLMorphism<R>> for &TLMorphism<R>
+where for<'r> &'r R : NumOps<&'r R, R> {
+    type Output = TLMorphism<R>;
+
+    fn mul(self, other: &TLMorphism<R>) -> TLMorphism<R> {
         let mut ans_vec = Vec::new();
         let delta = self.ring_point(&other).expect("Require ring point to multiply morphisms");
         let mut pows = vec![R::one(); (self.domain() + self.co_domain()) / 2];
         for i in 1.. pows.len() {
-            pows[i] = pows[i-1]*delta;
+            pows[i] = &pows[i-1]*&delta;
         }
         for (d, v) in other.coeffs.iter() {
             let mut dont = false;
@@ -277,7 +310,8 @@ impl<R:Copy + Clone + Num> Mul for TLMorphism<R> {
             ans_vec.extend(
                 self.coeffs.iter().map(|(dp, vp)|{
                     let m = dp.clone() * d.clone();
-                    (m.1, pows[m.0] * *vp * *v)
+                    // In the land of Mordor, where the shadows lie
+                    (m.1, &(&pows[m.0] * vp) * v)
                 })
             );
         }
@@ -295,17 +329,28 @@ impl<R:Copy + Clone + Num> Mul for TLMorphism<R> {
     }
 }
 
-impl<R:Copy + Clone + Num> BitOr for TLMorphism<R> {
+impl<R: Clone + Num> BitOr<TLMorphism<R>> for TLMorphism<R>
+where for<'r> &'r R : NumOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
     /// Bitwise or, `a | b`, is the tensor product
     fn bitor(self, other: TLMorphism<R>) -> TLMorphism<R> {
+        &self | &other
+    }
+}
+
+impl<R: Clone + Num> BitOr<&TLMorphism<R>> for &TLMorphism<R>
+where for<'r> &'r R : NumOps<&'r R, R> {
+    type Output = TLMorphism<R>;
+
+    /// Bitwise or, `a | b`, is the tensor product
+    fn bitor(self, other: &TLMorphism<R>) -> TLMorphism<R> {
         let mut ans_vec = Vec::new();
-        let delta = self.ring_point(&other);
+        let delta = self.ring_point(other);
         for (d, v) in self.coeffs.iter() {
             ans_vec.extend(
                 other.coeffs.iter().map(|(dp, vp)|{
-                    (d.clone() | dp.clone(), *v * *vp)
+                    (d.clone() | dp, v * vp)
                 })
             );
         }
@@ -317,33 +362,36 @@ impl<R:Copy + Clone + Num> BitOr for TLMorphism<R> {
 }
 
 
-impl<R:Copy + Clone + Num> Mul<R> for TLMorphism<R> {
+impl<R: Clone + Num> Mul<R> for TLMorphism<R>
+where for<'r> &'r R : NumOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
     fn mul(self, other : R) -> TLMorphism<R> {
         TLMorphism::new(
             self.coeffs.iter()
-            .map(|(k, v)| (k.clone(), *v * other))
+            .map(|(k, v)| (k.clone(), v * &other))
             .collect(),
             self.delta
         )
     }
 }
 
-impl<R:Copy + Clone + Num> Div<R> for TLMorphism<R> {
+impl<R: Clone + Num> Div<R> for TLMorphism<R>
+where for<'r> &'r R : NumOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
     fn div(self, other : R) -> TLMorphism<R> {
         TLMorphism::new(
             self.coeffs.iter()
-            .map(|(k, v)| (k.clone(), *v / other))
+            .map(|(k, v)| (k.clone(), v / &other))
             .collect(),
             self.delta
         )
     }
 }
 
-impl<R:Copy + Clone + Num> From<TLDiagram> for TLMorphism<R> {
+impl<R: Clone + Num> From<TLDiagram> for TLMorphism<R>
+where for<'r> &'r R : NumOps<&'r R, R> {
     fn from(diag : TLDiagram) -> TLMorphism<R> {
         TLMorphism::new(
             vec![(diag, R::one())],
@@ -352,7 +400,8 @@ impl<R:Copy + Clone + Num> From<TLDiagram> for TLMorphism<R> {
     }
 }
 
-impl<R:Copy + Clone + Num> num::Zero for TLMorphism<R> {
+impl<R: Clone + Num> num::Zero for TLMorphism<R>
+where for<'r> &'r R : NumOps<&'r R, R> {
     fn zero() -> TLMorphism<R> {
         unimplemented!()
     }
@@ -362,7 +411,7 @@ impl<R:Copy + Clone + Num> num::Zero for TLMorphism<R> {
     }
 }
 
-impl<R:Copy + Clone + Field + Tex + Signed> Tex for TLMorphism<R> {
+impl<R: Clone + Tex + Signed> Tex for TLMorphism<R> {
     fn into_tex(&self) -> String {
         let mut ans = String::new();
         for (k,v) in self.coeffs.iter() {
@@ -397,8 +446,8 @@ impl<R:Copy + Clone + Field + Tex + Signed> Tex for TLMorphism<R> {
     }
 }
 
-impl<R:Copy + Clone + Field + Tex + Signed + Serialisable> Serialisable for TLMorphism<R>
-{
+impl<R: Clone + Tex + Signed + Serialisable> Serialisable for TLMorphism<R>
+where for<'r> &'r R : NumOps<&'r R, R> {
     fn serialise(&self) -> String {
         let mut ans = String::new();
         for (k,v) in self.coeffs.iter() {
@@ -427,7 +476,7 @@ mod tests {
     use super::*;
     use crate::poly::{quantum, Polynomial};
     use crate::fraction::Fraction;
-    use crate::num::One;
+    use num::One;
     use crate::temperley_link::Link;
     use crate::temperley_site::Site::*;
 
@@ -469,10 +518,10 @@ mod tests {
         type R = Fraction<Polynomial<Q>>;
         let delta = Fraction::from(Polynomial::gen());
         let mut a : TLMorphism<R> = TLMorphism::from(TLDiagram::u(6, 3));
-        a.repoint(Some(delta));
+        a.repoint(Some(delta.clone()));
         assert_eq!(
-            a.clone() * a.clone(),
-            a.clone() * delta,
+            &a * &a,
+            a * delta,
         );
     }
 
@@ -514,9 +563,9 @@ mod tests {
             t = t + (jw2.turn_down(i) | TLMorphism::id(1) | jw2.turn_up(-i) * coeff);
         }
         for i in 1..5 {
-            let s = TLMorphism::u(5,i) * t.clone();
+            let s = &TLMorphism::u(5,i) * &t;
             for c in s.coeffs.values() {
-                assert!((c.num() % quantum(3)).is_zero());
+                assert!((c.num() % &quantum(3)).is_zero());
             }
         }
     }
@@ -524,8 +573,8 @@ mod tests {
     #[test]
     fn jw9over5() {
         let jw6 = jw(6) | TLMorphism::id(1);
-        let jw7 = jw6.clone() * TLMorphism::u(7,6);
-        let jw7 = jw7 * jw6.clone();
+        let jw7 = &jw6 * &TLMorphism::u(7,6);
+        let jw7 = &jw7 * &jw6;
         println!("{}", jw7.serialise());
         println!("{}",Fraction::new(quantum(6), quantum(7)));
         let jw7 = jw7 * Fraction::new(quantum(6), quantum(7));
