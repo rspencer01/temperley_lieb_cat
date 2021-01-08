@@ -341,6 +341,15 @@ where T : Clone + Eq + One + Zero + Signed,
     }
 }
 
+/// Casting an element to a polynomial in that element is via
+/// the usual injection of R into R[X].
+impl<T> From<T> for Polynomial<T>
+where T : Clone + Zero + Eq {
+    fn from(val : T) -> Polynomial<T> {
+        Polynomial::new(&[val])
+    }
+}
+
 impl PartialGCD for Polynomial<structures::Q> {
     fn partial_gcd(&self, other: &Polynomial<structures::Q>) -> Polynomial<structures::Q> {
         if (self.0.iter().fold(0, |a, x| x.den().abs().max(a)) > 0xffffffff) ||
