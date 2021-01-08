@@ -123,6 +123,13 @@ where for<'r> &'r R : NumOps<&'r R, R> {
         )
     }
 
+    pub fn flip(&self) -> TLMorphism<R> {
+        TLMorphism::new(
+            self.coeffs.iter().map(|(k, v)| (k.flip(), v.clone())).collect(),
+            self.delta.clone()
+        )
+    }
+
     pub fn id(n : usize) -> TLMorphism<R> {
         TLDiagram::id(n).into()
     }
@@ -294,7 +301,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     fn mul(self, other: &TLMorphism<R>) -> TLMorphism<R> {
         let mut ans_vec = Vec::new();
         let delta = self.ring_point(&other).expect("Require ring point to multiply morphisms");
-        let mut pows = vec![R::one(); (self.domain() + self.co_domain()) / 2];
+        let mut pows = vec![R::one(); self.co_domain() / 2];
         for i in 1.. pows.len() {
             pows[i] = &pows[i-1]*&delta;
         }
@@ -527,15 +534,14 @@ mod tests {
 
     #[test]
     fn general_jw() {
-        type R = Fraction<Polynomial<Q>>;
-        let mut jw1 = TLMorphism::<R>::id(1);
-        jw1.repoint(Some(Polynomial::gen().into()));
         assert!(jw(1).is_jones_wenzl());
         assert!(jw(2).is_jones_wenzl());
         assert!(jw(3).is_jones_wenzl());
         assert!(jw(4).is_jones_wenzl());
         assert!(jw(5).is_jones_wenzl());
         assert!((jw(4) | TLMorphism::id(1)) * jw(5) == jw(5));
+        assert!(jw(6).flip() == jw(6));
+        assert!((jw(4) | jw(2)).flip() == (jw(2) | jw(4)));
     }
 
     #[test]
