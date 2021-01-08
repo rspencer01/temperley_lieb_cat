@@ -198,16 +198,16 @@ where T : Clone + One {
 //    }
 //}
 //
-//impl<'a, T:'static> Mul<T> for Fraction<T>
-//where T : Clone + Num + PartialGCD + Signed + Clone,
-//      &'a T : MyNum<T> {
-//    type Output = Self;
-//
-//    fn mul(self, other: T) -> Self {
-//        Fraction::new(self.num * other, self.den)
-//    }
-//}
-//
+impl<T> Mul<T> for Fraction<T>
+where T : Clone + Signed + PartialGCD,
+      for<'r> &'r T : NumOps<&'r T, T>  {
+    type Output = Self;
+
+    fn mul(self, other: T) -> Self {
+        Fraction::new(self.num * other, self.den)
+    }
+}
+
 //impl<'a, T:'static> Div<T> for Fraction<T>
 //where T : Clone + Num + PartialGCD + Signed + Clone,
 //      &'a T : MyNum<T> {
@@ -382,6 +382,13 @@ where T : Clone + NumOps<T, T> + PartialGCD + Signed,
 
 mod test {
     use super::*;
+
+    #[test]
+    fn basic_arithmetic() {
+        assert_eq!(Fraction::new(1,2) + Fraction::new(1,2), Fraction::new(1,1));
+        assert_eq!(Fraction::new(1,3) - Fraction::new(1,4), Fraction::new(1,12));
+        assert_eq!(Fraction::new(1,3) * Fraction::new(3,1), Fraction::new(1,1));
+    }
 
     #[test]
     fn is_integral() {
