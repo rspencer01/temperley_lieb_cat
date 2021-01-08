@@ -51,6 +51,25 @@ where T : Clone + PartialGCD + Signed,
     }
 }
 
+impl<T> Fraction<T>
+where T : Clone + PartialGCD + Signed,
+      for <'r> &'r T : NumOps<&'r T, T> + Rem<&'r T, Output=T> {
+    /// Reduces the numerator and denominator modulo some element
+    ///
+    /// WARNING: It is not true that if fractions `a/b = c/d` then
+    /// `(a/b).mod(e) = (c/d).mod(e)`.  For this check use `equal_mod`.
+    pub fn rem(self, other: T) -> Fraction<T> {
+        Fraction::new(
+            self.num() % &other,
+            self.den() % &other,
+        )
+    }
+
+    pub fn equal_mod(self, other : &Fraction<T>, modulus: T) -> bool {
+        ((self.num() * other.den() - other.num() * self.den()) % modulus).is_zero()
+    }
+}
+
 impl<T> Fraction<T> {
     #[inline(always)]
     pub fn num(&self) -> &T {
@@ -398,5 +417,11 @@ mod test {
         assert!(Fraction::new(100,5).is_integral());
         assert!(!Fraction::new(101,5).is_integral());
         assert!(Fraction::new(-10,5).is_integral());
+    }
+
+    #[test]
+    fn rem() {
+        assert_eq!(Fraction::new(1,1), Fraction::new(5,3).rem(2));
+        assert_eq!(Fraction::new(3,1), Fraction::new(11,5).rem(4));
     }
 }
