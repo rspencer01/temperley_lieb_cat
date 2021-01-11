@@ -51,22 +51,30 @@ where T : Clone + PartialGCD + Signed,
     }
 }
 
-impl<T> Fraction<T>
-where T : Clone + PartialGCD + Signed,
+impl<T> Rem<&Fraction<T>> for &Fraction<T>
+where T : Clone + PartialGCD + Signed + NumOps<T,T> + std::fmt::Display,
       for <'r> &'r T : NumOps<&'r T, T> + Rem<&'r T, Output=T> {
+    type Output = Fraction<T>;
     /// Reduces the numerator and denominator modulo some element
     ///
     /// WARNING: It is not true that if fractions `a/b = c/d` then
     /// `(a/b).mod(e) = (c/d).mod(e)`.  For this check use `equal_mod`.
-    pub fn rem(self, other: T) -> Fraction<T> {
-        Fraction::new(
-            self.num() % &other,
-            self.den() % &other,
-        )
-    }
-
-    pub fn equal_mod(self, other : &Fraction<T>, modulus: T) -> bool {
-        ((self.num() * other.den() - other.num() * self.den()) % modulus).is_zero()
+    fn rem(self, other: &Fraction<T>) -> Fraction<T> {
+        assert!(other.is_integral());
+        let reduced_num = self.num() % other.num();
+        let reduced_den = self.den() % other.num();
+//        if reduced_den.is_zero() {
+//            assert!(reduced_num.is_zero(), "Cannot take remainder of fraction");
+//            Fraction::new(
+//                self.num() / &other,
+//                self.den() / &other,
+//            ).rem(other)
+//        } else {
+            Fraction::new(
+                reduced_num,
+                reduced_den,
+            )
+//        }
     }
 }
 
@@ -260,8 +268,8 @@ where T : Clone + Zero + NumOps<T, T> + PartialGCD + Signed,
 impl<T> Rem for Fraction<T> {
     type Output = Self;
 
-    fn rem(self, _other:Self) -> Self {
-        unimplemented!()
+    fn rem(self, other:Self) -> Self {
+        unimplemented!("Use remainder by reference");
     }
 }
 
@@ -421,7 +429,7 @@ mod test {
 
     #[test]
     fn rem() {
-        assert_eq!(Fraction::new(1,1), Fraction::new(5,3).rem(2));
-        assert_eq!(Fraction::new(3,1), Fraction::new(11,5).rem(4));
+        assert_eq!(Fraction::new(1,1), &Fraction::new(5,3) % &(2.into()));
+        assert_eq!(Fraction::new(3,1), &Fraction::new(11,5) % &(4.into()));
     }
 }
