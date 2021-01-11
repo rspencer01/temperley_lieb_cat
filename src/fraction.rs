@@ -51,6 +51,7 @@ where T : Clone + PartialGCD + Signed,
     }
 }
 
+/*
 impl<T> Rem<&Fraction<T>> for &Fraction<T>
 where T : Clone + PartialGCD + Signed + NumOps<T,T> + std::fmt::Display,
       for <'r> &'r T : NumOps<&'r T, T> + Rem<&'r T, Output=T> {
@@ -77,6 +78,7 @@ where T : Clone + PartialGCD + Signed + NumOps<T,T> + std::fmt::Display,
 //        }
     }
 }
+*/
 
 impl<T> Fraction<T> {
     #[inline(always)]
@@ -268,7 +270,7 @@ where T : Clone + Zero + NumOps<T, T> + PartialGCD + Signed,
 impl<T> Rem for Fraction<T> {
     type Output = Self;
 
-    fn rem(self, other:Self) -> Self {
+    fn rem(self, _other:Self) -> Self {
         unimplemented!("Use remainder by reference");
     }
 }
@@ -407,6 +409,7 @@ where T : Clone + NumOps<T, T> + PartialGCD + Signed,
       for<'r> &'r T: NumOps<&'r T, T> {}
 
 
+#[cfg(test)]
 mod test {
     use super::*;
 
@@ -425,11 +428,5 @@ mod test {
         assert!(Fraction::new(100,5).is_integral());
         assert!(!Fraction::new(101,5).is_integral());
         assert!(Fraction::new(-10,5).is_integral());
-    }
-
-    #[test]
-    fn rem() {
-        assert_eq!(Fraction::new(1,1), &Fraction::new(5,3) % &(2.into()));
-        assert_eq!(Fraction::new(3,1), &Fraction::new(11,5) % &(4.into()));
     }
 }

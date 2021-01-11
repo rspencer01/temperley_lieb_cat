@@ -141,7 +141,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     }
 
     pub fn big_u(n : usize, i : usize, j : usize) -> TLMorphism<R> {
-        TLDiagram::U(n,i, j).into()
+        TLDiagram::big_u(n,i, j).into()
     }
 
     pub fn is_jones_wenzl(&self) -> bool {
@@ -466,9 +466,8 @@ where for<'r> &'r R : NumOps<&'r R, R> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::poly::{quantum, Polynomial};
+    use crate::poly::Polynomial;
     use crate::fraction::Fraction;
-    use num::One;
     use crate::temperley_link::Link;
     use crate::structures::Q;
     use crate::temperley_site::Site::*;

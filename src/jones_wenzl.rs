@@ -48,7 +48,9 @@ fn jw2lp(n : usize, l : usize, p : usize) -> TLMorphism<Fraction<Polynomial<Q>>>
 fn reduce_mod(a : TLMorphism<Fraction<Polynomial<Q>>>, p : Polynomial<Q>) -> TLMorphism<Fraction<Polynomial<Q>>> {
     let foo =
         a.coeffs.into_iter()
-        .map(|(k,v)| (k, &v % &(p.clone().into())))
+        .map(|(k,v)|
+            (k, Fraction::new(v.num() % &p, v.den() % &p))
+        )
         .collect::<Vec<_>>();
     TLMorphism::new(
         foo,
@@ -57,10 +59,7 @@ fn reduce_mod(a : TLMorphism<Fraction<Polynomial<Q>>>, p : Polynomial<Q>) -> TLM
 }
 
 fn l_p_reduce_mod(a : TLMorphism<Fraction<Polynomial<Q>>>, l : usize, p : usize) -> TLMorphism<Fraction<Polynomial<Q>>> {
-    reduce_mod(
-        reduce_mod(a, quantum(l as i128)),
-        Polynomial::from(Fraction::from(p as i128))
-    )
+    reduce_mod(a, quantum(l as i128))
 }
 
 
@@ -78,9 +77,10 @@ pub fn jwlp(n : usize, l : usize, p : usize) -> TLMorphism<Fraction<Polynomial<Q
     }
 }
 
+#[cfg(test)]
 mod test {
     use super::*;
-    use num::{One, Zero};
+    use num::Zero;
 
     #[test]
     fn general_jw() {
@@ -125,7 +125,12 @@ mod test {
         for i in 1..11 {
             let s = &TLMorphism::u(11,i) * &t;
             for c in s.coeffs.values() {
-                assert!((c.num() % &(quantum(2) * Fraction::from(3))).is_zero());
+                let d = c.num() % &quantum(2);
+                for i in 0..d.degree()+1 {
+                    let e = d.coeff(i);
+                    assert!(e.is_integral());
+                    assert!(d.coeff(i).num() % 3 == 0);
+                }
             }
         }
     }
@@ -136,7 +141,6 @@ mod test {
         let jw7 = &jw6 * &TLMorphism::u(7,6);
         let jw7 = &jw7 * &jw6;
 //        println!("{}", jw7.serialise());
-        println!("{}",Fraction::new(quantum(6), quantum(7)));
         let jw7 = jw7 * Fraction::new(quantum(6), quantum(7));
 //        println!("{}", jw7.serialise());
 //        let mut t = TLMorphism::id(9) * Fraction::zero();

@@ -68,7 +68,7 @@ impl TLDiagram {
         )
     }
 
-    pub fn U(n :usize, i : usize, j : usize) -> TLDiagram {
+    pub fn big_u(n :usize, i : usize, j : usize) -> TLDiagram {
         TLDiagram::from_tableauxs(n, i+1..i+1+j, i+1..i+1 + j)
     }
 

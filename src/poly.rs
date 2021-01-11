@@ -18,15 +18,15 @@ use crate::fraction::Fraction;
 pub struct Polynomial<T>(Vec<T>);
 
 impl<T> Polynomial<T> {
-    fn degree(&self) -> usize {
+    pub fn degree(&self) -> usize {
         self.0.len() - 2
     }
 
-    fn hightest_term(&self) -> &T {
+    pub fn hightest_term(&self) -> &T {
         &self.0[self.0.len()-2]
     }
 
-    fn coeff(&self, i : usize) -> &T {
+    pub fn coeff(&self, i : usize) -> &T {
         if i > self.degree() {
             self.0.last().unwrap()
         } else {
