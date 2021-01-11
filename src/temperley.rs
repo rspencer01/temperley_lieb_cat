@@ -3,11 +3,9 @@ use num::{Num, Zero, Signed};
 use std::ops::{Add, Sub, Mul, Div, Neg, BitOr};
 use std::collections::HashMap;
 use crate::temperley_diagram::TLDiagram;
-use crate::poly::{quantum, Polynomial};
-use crate::fraction::Fraction;
 use crate::tex::Tex;
 use crate::serial::Serialisable;
-use crate::structures::{NumOps, Q};
+use crate::structures::NumOps;
 
 #[derive(Clone, Debug)]
 pub struct TLMorphism<R> {
@@ -191,19 +189,6 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     }
 }
 
-pub fn jw(n : usize) -> TLMorphism<Fraction<Polynomial<Q>>> {
-    let mut jw = TLMorphism::id(1);
-    jw.repoint(Some(Polynomial::gen().into()));
-    for i in 1..n {
-        let jwp = jw | TLMorphism::id(1);
-        let jwc = &jwp * &TLMorphism::u(i+1,i);
-        let jwc = &jwc * &jwp;
-        let jwc = jwc * Fraction::new(quantum(i as i128), quantum(i as i128+1));
-        jw = jwp - jwc;
-    }
-    jw
-}
-
 impl<R: Clone + Num + PartialEq> PartialEq for TLMorphism<R>
 where for<'r> &'r R : NumOps<&'r R, R> {
     fn eq(&self, other : &TLMorphism<R>) -> bool {
@@ -301,7 +286,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     fn mul(self, other: &TLMorphism<R>) -> TLMorphism<R> {
         let mut ans_vec = Vec::new();
         let delta = self.ring_point(&other).expect("Require ring point to multiply morphisms");
-        let mut pows = vec![R::one(); self.co_domain() / 2];
+        let mut pows = vec![R::one(); (self.domain() + self.co_domain()) / 2];
         for i in 1.. pows.len() {
             pows[i] = &pows[i-1]*&delta;
         }
@@ -485,6 +470,7 @@ mod tests {
     use crate::fraction::Fraction;
     use num::One;
     use crate::temperley_link::Link;
+    use crate::structures::Q;
     use crate::temperley_site::Site::*;
 
     #[test]
@@ -530,71 +516,5 @@ mod tests {
             &a * &a,
             a * delta,
         );
-    }
-
-    #[test]
-    fn general_jw() {
-        assert!(jw(1).is_jones_wenzl());
-        assert!(jw(2).is_jones_wenzl());
-        assert!(jw(3).is_jones_wenzl());
-        assert!(jw(4).is_jones_wenzl());
-        assert!(jw(5).is_jones_wenzl());
-        assert!((jw(4) | TLMorphism::id(1)) * jw(5) == jw(5));
-        assert!(jw(6).flip() == jw(6));
-        assert!((jw(4) | jw(2)).flip() == (jw(2) | jw(4)));
-    }
-
-    #[test]
-    fn jw8() {
-        println!("{}",jw(8).serialise());
-    }
-
-    #[test]
-    fn tensored_jw() {
-        assert!((jw(4) | jw(3)).is_idempotent());
-        assert_eq!((jw(4) | jw(3)).right_kills, vec![1,2,3,5,6]);
-        assert!((jw(3) | jw(2) | jw(3)).is_idempotent());
-        assert!(!((jw(3) | jw(2) | jw(3)).is_jones_wenzl()));
-        assert!((jw(5) | jw(1)).is_idempotent());
-        assert!(!(jw(5) | jw(1)).is_jones_wenzl());
-        assert!((jw(4) | jw(2)) * jw(6) == jw(6));
-    }
-
-    #[test]
-    fn jw5over3() {
-        let jw2 =jw(2);
-        let mut t = TLMorphism::id(5) * Fraction::zero();
-        for i in -2..3 {
-            let coeff = if i %2 == 0 { Fraction::one() } else { - Fraction::one() };
-            t = t + (jw2.turn_down(i) | TLMorphism::id(1) | jw2.turn_up(-i) * coeff);
-        }
-        for i in 1..5 {
-            let s = &TLMorphism::u(5,i) * &t;
-            for c in s.coeffs.values() {
-                assert!((c.num() % &quantum(3)).is_zero());
-            }
-        }
-    }
-
-    #[test]
-    fn jw9over5() {
-        let jw6 = jw(6) | TLMorphism::id(1);
-        let jw7 = &jw6 * &TLMorphism::u(7,6);
-        let jw7 = &jw7 * &jw6;
-        println!("{}", jw7.serialise());
-        println!("{}",Fraction::new(quantum(6), quantum(7)));
-        let jw7 = jw7 * Fraction::new(quantum(6), quantum(7));
-        println!("{}", jw7.serialise());
-//        let mut t = TLMorphism::id(9) * Fraction::zero();
-//        for i in -4..5 {
-//            let coeff = if i %2 == 0 { Fraction::one() } else { - Fraction::one() };
-//            t = t + (jw4.turn_down(i) | TLMorphism::id(1) | jw4.turn_up(-i) * coeff);
-//        }
-//        for i in 1..9 {
-//            let s = TLMorphism::u(9,i) * t.clone();
-//            for c in s.coeffs.values() {
-//                assert!((c.num() % quantum(5)).is_zero());
-//            }
-//        }
     }
 }
