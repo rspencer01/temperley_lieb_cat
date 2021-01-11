@@ -302,6 +302,20 @@ where T : Eq + Zero + One + Clone,
     }
 }
 
+impl<T> Rem<&T> for &Polynomial<T>
+where T : Eq + Zero + One + Clone,
+      for<'r> &'r T : NumOps<&'r T, T> {
+    type Output = Polynomial<T>;
+
+    fn rem(self, other:&T) -> Polynomial<T> {
+        Polynomial::new(
+            &self.0.iter()
+            .map(|x| x % other)
+            .collect()
+        )
+    }
+}
+
 
 impl<T> Num for Polynomial<T>
 where T : Clone + Eq + One + Zero,
