@@ -35,6 +35,16 @@ impl Serialisable for i128 {
     }
 }
 
+impl Serialisable for usize {
+    fn serialise(&self) -> String {
+        format!("{}", self)
+    }
+
+    fn deserialise(inpt : &str) -> Self {
+        inpt.parse::<usize>().expect("Could not parse int")
+    }
+}
+
 impl<T> Serialisable for Vec<T>
 where T : Serialisable {
     fn serialise(&self) -> String {
@@ -59,6 +69,7 @@ where T : Serialisable {
     }
 }
 
+
 mod test {
     #[cfg(test)]
     use crate::serial::Serialisable;
@@ -67,7 +78,7 @@ mod test {
     fn vec_serial() {
         assert_eq!(Vec::<i128>::new().serialise(), "[]");
         assert!(Vec::<i128>::deserialise("[]").is_empty());
-        assert_eq!(vec![1,2,3].serialise(), "[1,2,3,]");
+        assert_eq!(vec![1i128,2,3].serialise(), "[1,2,3,]");
         assert_eq!(Vec::<i128>::deserialise("[1,2,3,]"), vec![1,2,3]);
     }
 }

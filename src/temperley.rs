@@ -2,7 +2,7 @@ extern crate num;
 use num::{Num, Zero, Signed};
 use std::ops::{Add, Sub, Mul, Div, Neg, BitOr};
 use std::collections::HashMap;
-use crate::temperley_diagram::TLDiagram;
+use crate::TLDiagram;
 use crate::tex::Tex;
 use crate::serial::Serialisable;
 use crate::structures::NumOps;
@@ -468,28 +468,26 @@ mod tests {
     use super::*;
     use crate::poly::Polynomial;
     use crate::fraction::Fraction;
-    use crate::temperley_link::Link;
     use crate::structures::Q;
-    use crate::temperley_site::Site::*;
 
     #[test]
     fn equality() {
         assert_eq!(TLMorphism::new(vec![
             (TLDiagram::id(3), 1),
-            (TLDiagram::from_tableauxs(3, vec![2].into_iter(), vec![2].into_iter()), -1),
+            (TLDiagram::new(3, 3, vec![2], vec![2]), -1),
         ], None),
         TLMorphism::new(vec![
             (TLDiagram::id(3), 1),
-            (TLDiagram::new(vec![Link::new(Source(1), Source(2)), Link::new(Target(1), Target(2)), Link::new(Target(3), Source(3))]), -1),
+            (TLDiagram::new(3, 3, vec![2], vec![2]), -1),
         ], None));
         assert_eq!(TLMorphism::new(vec![
             (TLDiagram::id(3), 1),
-            (TLDiagram::from_tableauxs(3,vec![2].into_iter(), vec![2].into_iter()), -1),
+            (TLDiagram::new(3,3,vec![2], vec![2]), -1),
         ], None),
         TLMorphism::new(vec![
             (TLDiagram::id(3), 1),
-            (TLDiagram::from_tableauxs(3,vec![2].into_iter(), vec![2].into_iter()), -1),
-            (TLDiagram::from_tableauxs(3,vec![3].into_iter(), vec![2].into_iter()), 0),
+            (TLDiagram::new(3,3,vec![2], vec![2]), -1),
+            (TLDiagram::new(3,3,vec![3], vec![2]), 0),
         ], None));
     }
 
