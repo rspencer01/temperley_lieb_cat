@@ -178,6 +178,14 @@ impl std::ops::Mul for TLDiagram {
     type Output = (usize, TLDiagram);
 
     fn mul(self, other: TLDiagram) -> (usize, TLDiagram) {
+        &self * &other
+    }
+}
+
+impl std::ops::Mul for &TLDiagram {
+    type Output = (usize, TLDiagram);
+
+    fn mul(self, other: &TLDiagram) -> (usize, TLDiagram) {
         assert_eq!(self.co_domain, other.domain, "Cannot multiply diagrams if their (co)domains don't match");
         // Inlcusive
         // Sources 1   .. a

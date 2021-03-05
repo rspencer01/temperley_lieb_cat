@@ -24,21 +24,22 @@ where for<'r> &'r R : NumOps<&'r R, R> {
             .0;
         let domain = representative_diagram.domain();
         let co_domain = representative_diagram.co_domain();
-        let mut ans : HashMap<TLDiagram, R> = HashMap::new();
+        let mut coeffs_map : HashMap<TLDiagram, R> = HashMap::new();
         for (d,v) in coeffs.iter() {
             assert!(d.domain() == domain);
             assert!(d.co_domain() == co_domain);
             if !v.is_zero() {
-                if ans.contains_key(d) {
-                    ans.insert(d.clone(), &ans[d] + v);
+                if coeffs_map.contains_key(d) {
+                    coeffs_map.insert(d.clone(), &coeffs_map[d] + v);
                 } else {
-                    ans.insert(d.clone(), v.clone());
+                    coeffs_map.insert(d.clone(), v.clone());
                 }
             }
         }
-        if ans.is_empty() {
-            ans.insert(TLDiagram::any(domain, co_domain), R::zero());
+        if coeffs_map.is_empty() {
+            coeffs_map.insert(representative_diagram.clone(), R::zero());
         }
+
         let mut right_kills = Vec::new();
         if let Some(delta) = delta.clone() {
             let mut pows = vec![R::one(); co_domain];
@@ -47,7 +48,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
             }
             for i in 1..co_domain{
                 if TLMorphism::new(
-                    ans.iter().map(|(dp, vp)|{
+                    coeffs_map.iter().map(|(dp, vp)|{
                         let m = dp.clone() * TLDiagram::u(co_domain, i);
                         (m.1, &pows[m.0] * vp)
                     }).collect(),
@@ -57,8 +58,9 @@ where for<'r> &'r R : NumOps<&'r R, R> {
                 }
             }
         }
+
         TLMorphism{
-            coeffs:ans,
+            coeffs:coeffs_map,
             delta,
             right_kills,
             domain,
@@ -82,6 +84,14 @@ where for<'r> &'r R : NumOps<&'r R, R> {
         }
     }
 
+    pub fn domain(&self) -> usize {
+        self.domain
+    }
+
+    pub fn co_domain(&self) -> usize {
+        self.co_domain
+    }
+
     pub fn repoint(&mut self, delta : Option<R>) {
         self.delta = delta.clone();
         let co_domain = self.co_domain();
@@ -92,9 +102,10 @@ where for<'r> &'r R : NumOps<&'r R, R> {
                 pows[i] = &pows[i-1]*delta.as_ref().unwrap();
             }
             for i in 1..co_domain{
+                let cap = TLDiagram::u(co_domain, i);
                 if TLMorphism::new(
                     self.coeffs.iter().map(|(dp, vp)|{
-                        let m = dp.clone() * TLDiagram::u(co_domain, i);
+                        let m = dp * &cap;
                         (m.1, &pows[m.0] * vp)
                     }).collect(),
                     None
@@ -106,13 +117,6 @@ where for<'r> &'r R : NumOps<&'r R, R> {
         self.right_kills = right_kills;
     }
 
-    pub fn domain(&self) -> usize {
-        self.domain
-    }
-
-    pub fn co_domain(&self) -> usize {
-        self.co_domain
-    }
 
     pub fn involute(&self) -> TLMorphism<R> {
         TLMorphism::new(
@@ -144,48 +148,61 @@ where for<'r> &'r R : NumOps<&'r R, R> {
         TLDiagram::big_u(n,i, j).into()
     }
 
+    /// Check if this is the Jones Wenzl idempotent
+    ///
+    /// The Jones-Wenzl idempotent can be characterised by
+    ///   * Being a map n -> n
+    ///   * Having unit coefficient for the identity diagram
+    ///   * Being killed by all caps on the right
+    /// The other features (idempotent, invariant under involution)
+    /// follow from these.
     pub fn is_jones_wenzl(&self) -> bool {
-        self.domain() == self.co_domain() &&
-            (self.coeffs.get(&TLDiagram::id(self.domain())).unwrap_or(&R::zero()).is_one()) &&
-            self.right_kills.len() == self.co_domain() - 1
+        self.domain == self.co_domain &&
+            (self.coeffs.get(&TLDiagram::id(self.domain)).unwrap_or(&R::zero()).is_one()) &&
+            self.right_kills.len() == self.co_domain - 1
     }
 
     pub fn is_idempotent(&self) -> bool {
         self * &self == *self
     }
 
-    pub fn support(&self) -> Vec<TLDiagram> {
+    pub fn support(&self) -> Vec<&TLDiagram> {
         self.coeffs.iter()
             .filter(|(_,v)| !v.is_zero())
-            .map(|(k,_)| k.clone())
+            .map(|(k,_)| k)
             .collect()
     }
 
-    pub fn turn_down(&self, i : isize) -> TLMorphism<R> {
+    fn map_on_diagrams<F>(&self, f : F) -> TLMorphism<R>
+    where F : Fn(&TLDiagram) -> TLDiagram {
         TLMorphism::new(
             self.coeffs.iter()
-            .map(|(k,v)| (k.turn_down(i), v.clone()))
-            .collect(),
+                .map(|(k,v)| (f(k), v.clone()))
+                .collect(),
             self.delta.clone()
         )
+    }
+
+    fn map_on_coeffs<F>(&self, f : F) -> TLMorphism<R>
+    where F : Fn(&R) -> R {
+        TLMorphism::new(
+            self.coeffs.iter()
+                .map(|(k,v)| (k.clone(), f(v)))
+                .collect(),
+            self.delta.clone()
+        )
+    }
+
+    pub fn turn_down(&self, i : isize) -> TLMorphism<R> {
+        self.map_on_diagrams(|d| d.turn_down(i))
     }
 
     pub fn turn_up(&self, i : isize) -> TLMorphism<R> {
-        TLMorphism::new(
-            self.coeffs.iter()
-            .map(|(k,v)| (k.turn_up(i), v.clone()))
-            .collect(),
-            self.delta.clone()
-        )
+        self.map_on_diagrams(|d| d.turn_up(i))
     }
 
     pub fn rotate(&self, i : isize) -> TLMorphism<R> {
-        TLMorphism::new(
-            self.coeffs.iter()
-            .map(|(k,v)| (k.rotate(i), v.clone()))
-            .collect(),
-            self.delta.clone()
-        )
+        self.map_on_diagrams(|d| d.rotate(i))
     }
 }
 
@@ -261,12 +278,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
     fn neg(self) -> TLMorphism<R> {
-        TLMorphism::new(
-            self.coeffs.into_iter()
-            .map(|(k,v)| (k, -v))
-            .collect(),
-            self.delta
-        )
+        self.map_on_coeffs(|v| -v.clone())
     }
 }
 
@@ -301,7 +313,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
             if dont {continue}
             ans_vec.extend(
                 self.coeffs.iter().map(|(dp, vp)|{
-                    let m = dp.clone() * d.clone();
+                    let m = dp * d;
                     // In the land of Mordor, where the shadows lie
                     (m.1, &(&pows[m.0] * vp) * v)
                 })
@@ -359,12 +371,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
     fn mul(self, other : R) -> TLMorphism<R> {
-        TLMorphism::new(
-            self.coeffs.iter()
-            .map(|(k, v)| (k.clone(), v * &other))
-            .collect(),
-            self.delta
-        )
+        self.map_on_coeffs(|x| x * &other)
     }
 }
 
@@ -373,12 +380,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
     fn div(self, other : R) -> TLMorphism<R> {
-        TLMorphism::new(
-            self.coeffs.iter()
-            .map(|(k, v)| (k.clone(), v / &other))
-            .collect(),
-            self.delta
-        )
+        self.map_on_coeffs(|x| x / &other)
     }
 }
 
