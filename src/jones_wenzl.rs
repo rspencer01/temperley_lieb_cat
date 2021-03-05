@@ -12,7 +12,7 @@ pub fn jw(n : usize) -> TLMorphism<Fraction<Polynomial<Q>>> {
         let jwp = jw | TLMorphism::id(1);
         let jwc = &jwp * &TLMorphism::u(i+1,i);
         let jwc = &jwc * &jwp;
-        let jwc = jwc * Fraction::new(quantum(i as i128), quantum(i as i128+1));
+        let jwc = jwc * Fraction::new(quantum(i), quantum(i+1));
         jw = jwp - jwc;
     }
     jw
@@ -59,7 +59,7 @@ fn reduce_mod(a : TLMorphism<Fraction<Polynomial<Q>>>, p : Polynomial<Q>) -> TLM
 }
 
 fn l_p_reduce_mod(a : TLMorphism<Fraction<Polynomial<Q>>>, l : usize, p : usize) -> TLMorphism<Fraction<Polynomial<Q>>> {
-    reduce_mod(a, quantum(l as i128))
+    reduce_mod(a, quantum(l))
 }
 
 

@@ -12,10 +12,10 @@ fn manual_jw3() {
     let delta : R = Polynomial::gen().into();
     let jw3 = TLMorphism::new(vec![
         (TLDiagram::id(3), R::one()),
-        (TLDiagram::from_tableauxs(3,vec![2].into_iter(), vec![2].into_iter()), -R::from(quantum(2)) / Fraction::from(quantum(3))),
-        (TLDiagram::from_tableauxs(3,vec![3].into_iter(), vec![3].into_iter()), -R::from(quantum(2)) / Fraction::from(quantum(3))),
-        (TLDiagram::from_tableauxs(3,vec![2].into_iter(), vec![3].into_iter()), R::from(quantum(1)) / Fraction::from(quantum(3))),
-        (TLDiagram::from_tableauxs(3,vec![3].into_iter(), vec![2].into_iter()), R::from(quantum(1)) / Fraction::from(quantum(3))),
+        (TLDiagram::new(3,3, vec![2], vec![2]), -R::from(quantum(2)) / Fraction::from(quantum(3))),
+        (TLDiagram::new(3,3, vec![3], vec![3]), -R::from(quantum(2)) / Fraction::from(quantum(3))),
+        (TLDiagram::new(3,3, vec![2], vec![3]), R::from(quantum(1)) / Fraction::from(quantum(3))),
+        (TLDiagram::new(3,3, vec![3], vec![2]), R::from(quantum(1)) / Fraction::from(quantum(3))),
     ], Some(Polynomial::gen().into()));
     assert_eq!(jw3, jw3.involute());
     let mut a = TLMorphism::from(TLDiagram::u(3,1));

@@ -1,4 +1,4 @@
-use num::{Num, One, Zero, Signed};
+use num::{Num, One, Zero, Signed, ToPrimitive};
 use std::ops::{Add, Sub, Mul, Div, Neg, Rem};
 use std::fmt::{Debug, Display};
 
@@ -455,8 +455,9 @@ where T: Zero + One + Eq + Signed + Tex,
     }
 }
 
-pub fn quantum(n : i128) -> Polynomial<structures::Q> {
-    if n == 0 {
+pub fn quantum<I : ToPrimitive>(n : I) -> Polynomial<structures::Q> {
+    let n : i128 = n.to_i64().unwrap() as i128;
+    if n.is_zero() {
         return Polynomial::zero();
     }
     fn choose(n : i128, r: i128) -> i128 {
