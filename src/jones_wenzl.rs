@@ -9,11 +9,10 @@ pub fn jw(n : usize) -> TLMorphism<Fraction<Polynomial<Q>>> {
     let mut jw = TLMorphism::id(1);
     jw.repoint(Some(Polynomial::gen().into()));
     for i in 1..n {
-        let jwp = jw | TLMorphism::id(1);
-        let jwc = &jwp * &TLMorphism::u(i+1,i);
-        let jwc = &jwc * &jwp;
-        let jwc = jwc * Fraction::new(quantum(i), quantum(i+1));
-        jw = jwp - jwc;
+        let jwa = jw.clone() | TLMorphism::id(1);
+        let jwb = jw.turn_down(1) * jw.turn_down(1).involute();
+        let jwb = jwb * Fraction::new(quantum(i), quantum(i+1));
+        jw = jwa - jwb;
     }
     jw
 }
