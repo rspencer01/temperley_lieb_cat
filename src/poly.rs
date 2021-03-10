@@ -62,6 +62,17 @@ where T : Clone + Zero + Eq {
         coeffs.extend(self.0.clone().into_iter());
         self.0 = coeffs;
     }
+
+    pub fn eval<R>(&self, x : R, one : R) -> R 
+    where for<'r> R : Zero + Clone + Mul<Output=R> + Mul<&'r T,Output=R> {
+        let mut ans = one * self.coeff(0);
+        let mut xp = x.clone();
+        for i in 1..self.degree()+1 {
+            ans = ans + xp.clone() * self.coeff(i);
+            xp = xp * x.clone();
+        }
+        ans
+    }
 }
 
 impl<T> Polynomial<T>
