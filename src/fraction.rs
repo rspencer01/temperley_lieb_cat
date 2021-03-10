@@ -174,6 +174,16 @@ where T : Clone + NumOps<T, T> + PartialGCD + Signed,
     }
 }
 
+impl<T> Mul<&Fraction<T>> for Fraction<T>
+where T : Clone + NumOps<T, T> + PartialGCD + Signed,
+      for <'r> &'r T: NumOps<&'r T, T> {
+    type Output = Fraction<T>;
+
+    fn mul(self, other: &Fraction<T>) -> Fraction<T> {
+        &self * other
+    }
+}
+
 impl<T> Div for Fraction<T>
 where T : Clone + NumOps<T, T> + PartialGCD + Signed,
       for <'r> &'r T: NumOps<&'r T, T> {
@@ -357,6 +367,17 @@ where T : Clone + NumOps<T, T> + PartialGCD + Signed,
 
     fn signum(&self) -> Fraction<T> {
         unimplemented!()
+    }
+}
+
+impl <T> PartialGCD for Fraction<T> 
+where T : Clone {
+    fn partial_gcd(&self, other: &Self) -> Self {
+        (*other).clone()
+    }
+
+    fn is_small(&self) -> bool {
+        false
     }
 }
 

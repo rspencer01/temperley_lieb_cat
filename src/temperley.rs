@@ -163,7 +163,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     }
 
     pub fn is_idempotent(&self) -> bool {
-        self * &self == *self
+        self * self == *self
     }
 
     pub fn support(&self) -> Vec<&TLDiagram> {
@@ -365,13 +365,40 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     }
 }
 
+impl<R: Clone + Num> Mul<&R> for &TLMorphism<R>
+where for<'r> &'r R : NumOps<&'r R, R> {
+    type Output = TLMorphism<R>;
+
+    fn mul(self, other : &R) -> TLMorphism<R> {
+        self.map_on_coeffs(|x| x * other)
+    }
+}
+
+impl<R: Clone + Num> Mul<R> for &TLMorphism<R>
+where for<'r> &'r R : NumOps<&'r R, R> {
+    type Output = TLMorphism<R>;
+
+    fn mul(self, other : R) -> TLMorphism<R> {
+        self * &other
+    }
+}
+
+
+impl<R: Clone + Num> Mul<&R> for TLMorphism<R>
+where for<'r> &'r R : NumOps<&'r R, R> {
+    type Output = TLMorphism<R>;
+
+    fn mul(self, other : &R) -> TLMorphism<R> {
+        &self * other
+    }
+}
 
 impl<R: Clone + Num> Mul<R> for TLMorphism<R>
 where for<'r> &'r R : NumOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
     fn mul(self, other : R) -> TLMorphism<R> {
-        self.map_on_coeffs(|x| x * &other)
+        self * &other
     }
 }
 

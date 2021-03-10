@@ -187,6 +187,16 @@ where T : Clone + Add + Zero + Eq,
     }
 }
 
+impl<T> Sub<T> for Polynomial<T>
+where T : Clone + Eq + Zero,
+      for<'r> &'r T : NumOps<&'r T, T> {
+    type Output = Polynomial<T>;
+
+    fn sub(self, other: T) -> Polynomial<T> {
+        self - Polynomial::from(other)
+    }
+}
+
 impl<T> Mul<Polynomial<T>> for Polynomial<T>
 where T : Clone + Eq + Zero,
       for<'r> &'r T : NumOps<&'r T, T> {
