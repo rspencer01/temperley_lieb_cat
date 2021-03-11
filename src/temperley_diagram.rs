@@ -135,8 +135,6 @@ impl TLDiagram {
             assert!(self.co_domain >= i,"Cannot turn element");
             let mut left_tab = self.left_tab.clone();
             let mut right_tab = self.right_tab.clone();
-            println!("{} {} {}", self.domain, self.co_domain, i);
-            println!("{:?} {:?}", left_tab, right_tab);
             for j in 0..i {
                 if right_tab.contains(&(self.co_domain - j)) {
                     right_tab.pop();
@@ -144,7 +142,6 @@ impl TLDiagram {
                     left_tab.push(self.domain + 1 + j);
                 }
             }
-            println!("{:?} {:?}", left_tab, right_tab);
             TLDiagram::new(
                 self.domain + i,
                 self.co_domain - i,

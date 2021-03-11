@@ -204,6 +204,11 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     pub fn rotate(&self, i : isize) -> TLMorphism<R> {
         self.map_on_diagrams(|d| d.rotate(i))
     }
+
+    pub fn trace(&self) -> TLMorphism<R> {
+        let u  = TLMorphism::from(TLDiagram::cup(self.domain() + 1, self.domain()));
+        u * self.turn_down(1)
+    }
 }
 
 impl<R: Clone + Num + PartialEq> PartialEq for TLMorphism<R>
@@ -298,7 +303,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     fn mul(self, other: &TLMorphism<R>) -> TLMorphism<R> {
         let mut ans_vec = Vec::new();
         let delta = self.ring_point(&other).expect("Require ring point to multiply morphisms");
-        let mut pows = vec![R::one(); (self.domain() + self.co_domain()) / 2];
+        let mut pows = vec![R::one(); (self.domain() + self.co_domain()) / 2 + 1];
         for i in 1.. pows.len() {
             pows[i] = &pows[i-1]*&delta;
         }
