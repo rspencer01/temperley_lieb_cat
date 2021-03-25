@@ -1,19 +1,16 @@
+//! Algebraic structures and definitions of numerical operations
+
 use crate::fraction::Fraction;
-//use crate::poly::Polynomial;
-use num::Num;
 use std::ops::{Add, Sub, Mul, Div, Neg};
 
-pub trait Field
-    : Num +
-      std::ops::Neg<Output=Self> +
-      std::fmt::Display
-{}
-
+/// Rational numbers to 128 bits of accuracy
 pub type Q = Fraction<i128>;
 
-impl Field for Q {}
-//impl Field for Fraction<Polynomial<Q>> {}
-
+/// A trait describing numerical operations `+ - * /` on a type
+/// with another type
+///
+/// You can use this to bind your types, for example `A : NumOps<Rhs=A, Out=A>` for an algebra
+/// or `A : NumOps<Rhs=B, Out=B>` for a ring homomorphism $A \to B$.
 pub trait NumOps<Rhs, Out>:
     Add<Rhs, Output = Out>
     + Sub<Rhs, Output = Out>
