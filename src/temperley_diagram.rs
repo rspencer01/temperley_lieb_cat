@@ -1,5 +1,7 @@
 extern crate partitions;
+extern crate itertools;
 
+use itertools::Itertools;
 use crate::tex::Tex;
 use crate::serial::Serialisable;
 
@@ -100,6 +102,36 @@ impl TLDiagram {
                 v |= 1<<(i*2 + 2);
             }
             TLDiagram::new(n,m,v, 0)
+        }
+    }
+
+    pub fn all(n : usize, m : usize) -> Vec<TLDiagram> {
+        println!("All {} {}",n,m);
+        fn ok(tab: &Vec<usize>) -> bool {
+            for (c,i) in tab.iter().enumerate() {
+                if *i < 2*(c+1) {
+                    return false
+                }
+            }
+            true
+        }
+        if n < m {
+            TLDiagram::all(m,n).into_iter().map(|d| d.involute()).collect()
+        } else {
+            let mut ans = Vec::new();
+            for rm in 0..(m/2+1) {
+                let prop = m - 2*rm;
+                let rn = (n - prop) / 2;
+                for lt in (1..(n+1)).combinations(rn).filter(ok) {
+                    for rt in (1..(m+1)).combinations(rm).filter(ok) {
+                        println!("{:?} {:?}",lt, rt);
+                        ans.push(TLDiagram::new(n,m,
+                                                lt.iter().fold(0,|l,n| l | (1<<n)),
+                                                rt.iter().fold(0,|l,n| l | (1<<n))));
+                    }
+                }
+            }
+            ans
         }
     }
 
@@ -397,5 +429,13 @@ mod tests {
         assert_eq!(TLDiagram::id(3).turn_down(2), TLDiagram::new(5,1,0b110000,0));
         assert_eq!(TLDiagram::any(14,4).turn_down(3).turn_down(-3), TLDiagram::any(14,4));
         assert_eq!(TLDiagram::id(5).turn_up(-2).turn_down(2), TLDiagram::new(5,5,0b110000,0b011000));
+    }
+
+    #[test]
+    fn all() {
+        println!("{:?}", TLDiagram::all(3,1));
+        use std::collections::HashSet;
+        assert_eq!(TLDiagram::all(3,1).iter().collect::<HashSet<_>>().len(), 2);
+        assert_eq!(TLDiagram::all(9,5).iter().collect::<HashSet<_>>().len(), 42*5+48*4+27*1);
     }
 }

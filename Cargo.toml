@@ -11,6 +11,7 @@ num = "0.3"
 num-traits = "0.2.14"
 partitions = "0.2.4"
 which = "4.0.2"
+itertools = "0.10.0"
 
 [profile.release]
 debug = true
