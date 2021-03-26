@@ -508,20 +508,20 @@ mod tests {
     fn equality() {
         assert_eq!(TLMorphism::new(vec![
             (TLDiagram::id(3), 1),
-            (TLDiagram::new(3, 3, vec![2], vec![2]), -1),
+            (TLDiagram::new(3, 3, 0b0100, 0b0100), -1),
         ], None),
         TLMorphism::new(vec![
             (TLDiagram::id(3), 1),
-            (TLDiagram::new(3, 3, vec![2], vec![2]), -1),
+            (TLDiagram::new(3, 3, 0b0100, 0b0100), -1),
         ], None));
         assert_eq!(TLMorphism::new(vec![
             (TLDiagram::id(3), 1),
-            (TLDiagram::new(3,3,vec![2], vec![2]), -1),
+            (TLDiagram::new(3,3,0b100, 0b100), -1),
         ], None),
         TLMorphism::new(vec![
             (TLDiagram::id(3), 1),
-            (TLDiagram::new(3,3,vec![2], vec![2]), -1),
-            (TLDiagram::new(3,3,vec![3], vec![2]), 0),
+            (TLDiagram::new(3,3,0b100, 0b100), -1),
+            (TLDiagram::new(3,3,0b1000, 0b100), 0),
         ], None));
     }
 

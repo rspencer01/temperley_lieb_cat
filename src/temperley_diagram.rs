@@ -3,12 +3,12 @@ extern crate partitions;
 use crate::tex::Tex;
 use crate::serial::Serialisable;
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub struct TLDiagram{
     domain : usize,
     co_domain : usize,
-    left_tab : Vec<usize>,
-    right_tab : Vec<usize>,
+    left_tab : u64,
+    right_tab : u64,
 }
 
 impl std::fmt::Display for TLDiagram {
@@ -17,35 +17,20 @@ impl std::fmt::Display for TLDiagram {
     }
 }
 
-impl std::hash::Hash for TLDiagram {
-    fn hash<H:std::hash::Hasher>(&self, state : &mut H) {
-        self.domain.hash(state);
-        self.co_domain.hash(state);
-        for i in self.left_tab.iter() {
-            i.hash(state)
-        }
-        for i in self.right_tab.iter() {
-            i.hash(state)
-        }
-    }
-}
-
 impl TLDiagram {
-    pub fn new(domain : usize, co_domain : usize, mut left_tab : Vec<usize>, mut right_tab : Vec<usize>) -> TLDiagram {
-        left_tab.sort();
-        right_tab.sort();
-        assert!(domain - 2*left_tab.len() == co_domain - 2*right_tab.len());
+    pub fn new(domain : usize, co_domain : usize, left_tab : u64, right_tab : u64) -> TLDiagram {
+        assert!(domain as u32 - 2*left_tab.count_ones() == co_domain as u32 - 2*right_tab.count_ones());
         TLDiagram {
             domain, co_domain, left_tab, right_tab
         }
     }
 
     pub fn u(n :usize, i : usize) -> TLDiagram {
-        TLDiagram::new(n, n, vec![i+1], vec![i+1])
+        TLDiagram::new(n, n, 1<<(i+1), 1<<(i+1))
     }
 
     pub fn big_u(n :usize, i : usize, j : usize) -> TLDiagram {
-        TLDiagram::new(n, n, (i+1..i+1+j).collect(), (i+1..i+1 + j).collect())
+        TLDiagram::new(n, n, (1<<(i+j+1)) - (1<<i),(1<<(i+j+1)) - (1<<i))
     }
 
     pub fn domain(&self) -> usize {
@@ -57,7 +42,7 @@ impl TLDiagram {
     }
 
     pub fn propagation(&self) -> usize {
-        self.domain - self.left_tab.len()
+        self.domain - self.left_tab.count_ones() as usize
     }
 
     pub fn involute(self) -> TLDiagram {
@@ -67,20 +52,20 @@ impl TLDiagram {
     }
 
     pub fn flip(&self) -> TLDiagram {
-        let mut new_left_tab = Vec::new();
+        let mut new_left_tab = 0;
         let mut stack = Vec::new();
         for i in 1..self.domain+1 {
-            if self.left_tab.contains(&i) {
-                new_left_tab.push(self.domain + 1 - stack.pop().unwrap());
+            if (self.left_tab & (1<<i)) != 0 {
+                new_left_tab |= 1 << (self.domain + 1 - stack.pop().unwrap()) as u64;
             } else {
                 stack.push(i);
             }
         }
-        let mut new_right_tab = Vec::new();
+        let mut new_right_tab = 0;
         let mut stack = Vec::new();
         for i in 1..self.co_domain+1 {
-            if self.right_tab.contains(&i) {
-                new_right_tab.push(self.co_domain + 1 - stack.pop().unwrap());
+            if (self.right_tab & (1<<i)) != 0 {
+                new_right_tab |= 1<<(self.co_domain + 1 - stack.pop().unwrap()) as u64;
             } else {
                 stack.push(i);
             }
@@ -91,7 +76,7 @@ impl TLDiagram {
     }
 
     pub fn cap(n: usize, i: usize) -> TLDiagram {
-        TLDiagram::new(n,n-2, vec![i+1], vec![])
+        TLDiagram::new(n,n-2, 1<<(i+1), 0)
     }
 
     pub fn cup(n: usize, i: usize) -> TLDiagram {
@@ -99,7 +84,7 @@ impl TLDiagram {
     }
 
     pub fn id(n: usize) -> TLDiagram {
-        TLDiagram::new(n,n,vec![], vec![])
+        TLDiagram::new(n, n, 0, 0)
     }
 
     pub fn inject(&self) -> TLDiagram {
@@ -110,17 +95,19 @@ impl TLDiagram {
         if n < m {
             TLDiagram::any(m,n).involute()
         } else {
-            let mut v = Vec::new();
+            let mut v = 0;
             for i in 0..(n - m)/2 {
-                v.push(i*2 + 2);
+                v |= 1<<(i*2 + 2);
             }
-            TLDiagram::new(n,m,v, vec![])
+            TLDiagram::new(n,m,v, 0)
         }
     }
 
     pub fn simple_links(&self) -> Vec<usize> {
-        self.left_tab.iter()
-        .filter(|i| !self.left_tab.contains(&(*i-1)))
+        (1..self.domain()+1).filter(|i|
+                (self.left_tab & (1<<i) != 0) &
+                (self.left_tab & (1<<(i-1)) == 0)
+        )
         .map(|i| i-1)
         .collect()
     }
@@ -136,10 +123,10 @@ impl TLDiagram {
             let mut left_tab = self.left_tab.clone();
             let mut right_tab = self.right_tab.clone();
             for j in 0..i {
-                if right_tab.contains(&(self.co_domain - j)) {
-                    right_tab.pop();
+                if right_tab & ( 1<<(self.co_domain - j)) != 0 {
+                    right_tab ^=  1<<(self.co_domain - j);
                 } else {
-                    left_tab.push(self.domain + 1 + j);
+                    left_tab |= 1<<(self.domain + 1 + j);
                 }
             }
             TLDiagram::new(
@@ -198,7 +185,7 @@ impl std::ops::Mul for &TLDiagram {
 
         let mut left_stack = Vec::new();
         for i in 1..self.domain()+1 {
-            if self.left_tab.contains(&i) {
+            if self.left_tab & (1<<i) != 0 {
                 uf.union(left(left_stack.pop().unwrap()), left(i));
             } else {
                 left_stack.push(i);
@@ -206,7 +193,7 @@ impl std::ops::Mul for &TLDiagram {
         }
         let mut right_stack = Vec::new();
         for i in 1..self.co_domain+1 {
-            if self.right_tab.contains(&i) {
+            if self.right_tab & (1<<i) != 0 {
                 uf.union(mid(right_stack.pop().unwrap()), mid(i));
             } else {
                 right_stack.push(i);
@@ -219,7 +206,7 @@ impl std::ops::Mul for &TLDiagram {
 
         let mut left_stack = Vec::new();
         for i in 1..other.domain()+1 {
-            if other.left_tab.contains(&i) {
+            if other.left_tab & (1<<i) != 0 {
                 uf.union(mid(left_stack.pop().unwrap()), mid(i));
             } else {
                 left_stack.push(i);
@@ -227,7 +214,7 @@ impl std::ops::Mul for &TLDiagram {
         }
         let mut right_stack = Vec::new();
         for i in 1..other.co_domain+1 {
-            if other.right_tab.contains(&i) {
+            if other.right_tab & (1<<i) != 0 {
                 uf.union(right(right_stack.pop().unwrap()), right(i));
             } else {
                 right_stack.push(i);
@@ -238,16 +225,16 @@ impl std::ops::Mul for &TLDiagram {
             uf.union(mid(left_stack[i]), right(right_stack[i]));
         }
 
-        let mut left_tab = Vec::new();
+        let mut left_tab = 0;
         for i in 1..self.domain+1 {
             if let Some(d) = uf.set(left(i)).find(|x| i < *x.1 && *x.1 <= self.domain()) {
-                left_tab.push(*d.1);
+                left_tab |= 1 << (*d.1);
             }
         }
-        let mut right_tab = Vec::new();
+        let mut right_tab = 0;
         for i in 1..other.co_domain+1 {
             if let Some(d) = uf.set(right(i)).find(|x| self.domain + self.co_domain + i < *x.1) {
-                right_tab.push(d.1 - self.domain - self.co_domain);
+                right_tab |= 1 << (d.1 - self.domain - self.co_domain);
             }
         }
         (
@@ -264,8 +251,8 @@ impl std::ops::BitOr for TLDiagram {
     fn bitor(mut self, other: TLDiagram) -> TLDiagram {
         let n = self.domain;
         let m = self.co_domain;
-        self.left_tab.extend(other.left_tab.into_iter().map(|x| x + n));
-        self.right_tab.extend(other.right_tab.into_iter().map(|x| x + m));
+        self.left_tab |= other.left_tab<<n;
+        self.right_tab |= other.right_tab<<m;
         self.domain += other.domain;
         self.co_domain += other.co_domain;
         self
@@ -278,8 +265,8 @@ impl std::ops::BitOr<&TLDiagram> for TLDiagram {
     fn bitor(mut self, other: &TLDiagram) -> TLDiagram {
         let n = self.domain;
         let m = self.co_domain;
-        self.left_tab.extend(other.left_tab.iter().map(|x| *x + n));
-        self.right_tab.extend(other.right_tab.iter().map(|x| *x + m));
+        self.left_tab |= other.left_tab<<n;
+        self.right_tab |= other.right_tab<<m;
         self.domain += other.domain;
         self.co_domain += other.co_domain;
         self
@@ -301,7 +288,7 @@ impl Tex for TLDiagram {
         let mut left_stack = Vec::new();
         let mut right_stack = Vec::new();
         for i in 1..self.domain+1 {
-            if self.left_tab.contains(&i) {
+            if self.left_tab & (1<<i) != 0 {
                 ans += &format!(
                     "\\draw[very thick] (0,{}) edge[out=0, in=0] (0,{});",
                     self.domain-left_stack.pop().unwrap()+1,
@@ -311,7 +298,7 @@ impl Tex for TLDiagram {
             }
         }
         for i in 1..self.co_domain+1 {
-            if self.right_tab.contains(&i) {
+            if self.right_tab & (1<<i) != 0 {
                 ans += &format!(
                     "\\draw[very thick] ({0},{1}) edge[out=180, in=180] ({0},{2});",
                     width,
@@ -354,8 +341,8 @@ impl Serialisable for TLDiagram {
         TLDiagram{
             domain : usize::deserialise(items.next().unwrap()),
             co_domain : usize::deserialise(items.next().unwrap()),
-            left_tab : Vec::deserialise(items.next().unwrap()),
-            right_tab : Vec::deserialise(items.next().unwrap()),
+            left_tab : u64::deserialise(items.next().unwrap()),
+            right_tab : u64::deserialise(items.next().unwrap()),
         }
     }
 }
@@ -371,20 +358,20 @@ mod tests {
         assert_eq!(TLDiagram::cup(10,3).domain(), 8);
         assert_eq!(TLDiagram::cup(10,3).co_domain(), 10);
         assert_eq!(TLDiagram::cup(4,3).inject(), TLDiagram::cup(5,3));
-        assert_eq!(TLDiagram::cap(2,1), TLDiagram::new(2,0,vec![2], vec![]));
+        assert_eq!(TLDiagram::cap(2,1), TLDiagram::new(2,0,0b100, 0));
     }
     #[test]
     fn cap_from_tableaux() {
-        assert_eq!(TLDiagram::cap(10,3), TLDiagram::new(10,8, vec![4], vec![]));
+        assert_eq!(TLDiagram::cap(10,3), TLDiagram::new(10,8, 0b00000010000, 0));
     }
 
 
     #[test]
     fn composition() {
         let a = TLDiagram::cap(4,1) * TLDiagram::cup(4,2);
-        assert_eq!(a , (0, TLDiagram::new(4,4,vec![2],vec![3])));
+        assert_eq!(a , (0, TLDiagram::new(4,4,0b00100,0b01000)));
         let a = TLDiagram::cap(4,1) * TLDiagram::cup(4,1);
-        assert_eq!(a , (0, TLDiagram::new(4,4,vec![2],vec![2])));
+        assert_eq!(a , (0, TLDiagram::new(4,4,0b00100,0b00100)));
         let a = TLDiagram::cup(4,1) * TLDiagram::cap(4,1);
         debug_assert_eq!(a , (1, TLDiagram::id(2)));
     }
@@ -407,8 +394,8 @@ mod tests {
     #[test]
     fn turn() {
         assert_eq!(TLDiagram::id(3).turn_down(1), TLDiagram::cap(4,3));
-        assert_eq!(TLDiagram::id(3).turn_down(2), TLDiagram::new(5,1,vec![4,5],vec![]));
+        assert_eq!(TLDiagram::id(3).turn_down(2), TLDiagram::new(5,1,0b110000,0));
         assert_eq!(TLDiagram::any(14,4).turn_down(3).turn_down(-3), TLDiagram::any(14,4));
-        assert_eq!(TLDiagram::id(5).turn_up(-2).turn_down(2), TLDiagram::new(5,5,vec![4,5],vec![3,4]));
+        assert_eq!(TLDiagram::id(5).turn_up(-2).turn_down(2), TLDiagram::new(5,5,0b110000,0b011000));
     }
 }

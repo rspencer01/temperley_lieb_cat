@@ -45,6 +45,16 @@ impl Serialisable for usize {
     }
 }
 
+impl Serialisable for u64 {
+    fn serialise(&self) -> String {
+        format!("{}", self)
+    }
+
+    fn deserialise(inpt : &str) -> Self {
+        inpt.parse::<u64>().expect("Could not parse int")
+    }
+}
+
 impl<T> Serialisable for Vec<T>
 where T : Serialisable {
     fn serialise(&self) -> String {
