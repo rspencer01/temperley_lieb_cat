@@ -481,6 +481,9 @@ pub fn quantum<I : ToPrimitive>(n : I) -> Polynomial<structures::Q> {
     if n.is_zero() {
         return Polynomial::zero();
     }
+    if n < 0 {
+        return - quantum(-n);
+    }
     fn choose(n : i128, r: i128) -> i128 {
         let mut ans = 1;
         for i in n-r+1..n+1 {

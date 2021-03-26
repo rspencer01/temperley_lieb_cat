@@ -104,9 +104,17 @@ impl TLDiagram {
             TLDiagram::new(n,m,v, 0)
         }
     }
+    pub fn remove_cap(&self, i : usize)  -> TLDiagram {
+        TLDiagram {
+            left_tab : 
+                (self.left_tab & ((1<<i)-1)) |
+                ((self.left_tab & !((1<<(i+2))-1))>>2),
+            domain: self.domain-2,
+            ..*self
+        }
+    }
 
     pub fn all(n : usize, m : usize) -> Vec<TLDiagram> {
-        println!("All {} {}",n,m);
         fn ok(tab: &Vec<usize>) -> bool {
             for (c,i) in tab.iter().enumerate() {
                 if *i < 2*(c+1) {
@@ -124,7 +132,6 @@ impl TLDiagram {
                 let rn = (n - prop) / 2;
                 for lt in (1..(n+1)).combinations(rn).filter(ok) {
                     for rt in (1..(m+1)).combinations(rm).filter(ok) {
-                        println!("{:?} {:?}",lt, rt);
                         ans.push(TLDiagram::new(n,m,
                                                 lt.iter().fold(0,|l,n| l | (1<<n)),
                                                 rt.iter().fold(0,|l,n| l | (1<<n))));
@@ -437,5 +444,14 @@ mod tests {
         use std::collections::HashSet;
         assert_eq!(TLDiagram::all(3,1).iter().collect::<HashSet<_>>().len(), 2);
         assert_eq!(TLDiagram::all(9,5).iter().collect::<HashSet<_>>().len(), 42*5+48*4+27*1);
+    }
+
+    #[test]
+    fn remove_cap() {
+        assert_eq!(TLDiagram::cap(8,3).remove_cap(3), TLDiagram::id(6));
+        assert_eq!(TLDiagram::new(8,6,0b01100100,0b001100).remove_cap(1),
+                   TLDiagram::new(6,6,0b00011000,0b001100));
+        assert_eq!(TLDiagram::new(8,6,0b01100100,0b001100).remove_cap(4),
+                   TLDiagram::new(6,6,0b00010100,0b001100));
     }
 }

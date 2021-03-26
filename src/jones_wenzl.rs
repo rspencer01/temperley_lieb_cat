@@ -1,11 +1,57 @@
 use crate::poly::{quantum, Polynomial};
 use crate::temperley::TLMorphism;
+use crate::temperley_diagram::TLDiagram;
 use crate::fraction::Fraction;
 use crate::structures::Q;
+use std::collections::HashMap;
 use num::{One, Zero};
+use std::sync::Mutex;
+
+lazy_static! {
+    static ref JW_COEFFS : Mutex<HashMap<TLDiagram, Fraction<Polynomial<Q>>>> = {
+        let mut m = HashMap::new();
+        m.insert(TLDiagram::new(0,0,0,0), Fraction::one());
+        m.insert(TLDiagram::new(1,1,0,0), Fraction::one());
+        Mutex::new(m)
+    };
+    static ref JW_COMPUTED : Mutex<usize> = Mutex::new(1);
+}
 
 /// Construct the Jones-Wenzl element on a certain number of strands
-pub fn jw(n : usize) -> TLMorphism<Fraction<Polynomial<Q>>> {
+/// 
+/// This function uses Morrison's formula for coefficients and caches
+/// the results so succesive calls will be faster
+pub fn jw(n : usize)-> TLMorphism<Fraction<Polynomial<Q>>>  {
+    let x = Polynomial::gen().into();
+    for m in *JW_COMPUTED.lock().unwrap()..(n+1) {
+        for d in TLDiagram::all(m,m) {
+            let mut ans = Fraction::zero();
+            let dp = d.turn_down(1);
+            for i in dp.simple_links().into_iter() {
+                println!("{}", dp.remove_cap(i));
+                let coeff = if (i + m) % 2 == 0 {
+                    Fraction::one()
+                } else {
+                    -Fraction::one()
+                };
+                ans = ans + &JW_COEFFS.lock().unwrap()[&dp.remove_cap(i)]
+                    * &Fraction::new(quantum(-(i as isize)) , quantum(-(m as isize))) * &coeff;
+            }
+            JW_COEFFS.lock().unwrap().insert(d,ans);
+        }
+    }
+    *JW_COMPUTED.lock().unwrap() = n;
+    TLMorphism::new(TLDiagram::all(n,n).iter()
+                    .map(|d| (*d, JW_COEFFS.lock().unwrap()[d].clone()))
+                    .collect::<Vec<_>>(),
+                    Some(x))
+}
+
+/// Construct the Jones-Wenzl element on a certain number of strands
+/// 
+/// This function computes the idempotents using the usual iterative
+/// form.
+pub fn jw_old(n : usize) -> TLMorphism<Fraction<Polynomial<Q>>> {
     let mut jw = TLMorphism::id(1);
     jw.repoint(Some(Polynomial::gen().into()));
     for i in 1..n {
@@ -17,19 +63,12 @@ pub fn jw(n : usize) -> TLMorphism<Fraction<Polynomial<Q>>> {
     jw
 }
 
-fn p_adic_digits(n : usize, p : usize) -> Vec<usize> {
-    if n == 0 {
-        Vec::new()
-    } else {
-        let mut ans = vec![n % p];
-        ans.extend(p_adic_digits(n / p, p));
-        ans
-    }
-}
-
 fn l_p_adic_digits(n : usize, l : usize, p : usize) -> Vec<usize> {
-    let mut ans = vec![n % l];
-    ans.extend(p_adic_digits(n / l, p));
+    let mut ans = Vec::new();
+    if n > 0 {
+        ans.push(n % l);
+        ans.extend(l_p_adic_digits(n / l, p, p));
+    }
     ans
 }
 
@@ -157,6 +196,12 @@ mod test {
 
     #[test]
     fn p_adic() {
-        assert_eq!(vec![2,3,0,1usize], p_adic_digits(2+3*5+1*125, 5));
+        assert_eq!(vec![2,3,0,1usize], l_p_adic_digits(2+3*5+1*125, 5, 5));
+    }
+
+    #[test]
+    fn morrison() {
+        assert_eq!(jw(3), jw_old(3));
+        assert_eq!(jw(7), jw_old(7));
     }
 }
