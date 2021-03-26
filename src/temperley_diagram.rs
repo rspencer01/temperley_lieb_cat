@@ -5,12 +5,18 @@ use itertools::Itertools;
 use crate::tex::Tex;
 use crate::serial::Serialisable;
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TLDiagram{
     domain : usize,
     co_domain : usize,
     left_tab : u64,
     right_tab : u64,
+}
+
+impl std::fmt::Debug for TLDiagram {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f,"TL {{ {} ↦ {} {:b} {:b} }}", self.domain, self.co_domain, self.left_tab, self.right_tab)
+    }
 }
 
 impl std::fmt::Display for TLDiagram {
