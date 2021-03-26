@@ -30,9 +30,9 @@ where for<'r> &'r R : NumOps<&'r R, R> {
             assert!(d.co_domain() == co_domain);
             if !v.is_zero() {
                 if coeffs_map.contains_key(d) {
-                    coeffs_map.insert(d.clone(), &coeffs_map[d] + v);
+                    coeffs_map.insert(*d, &coeffs_map[d] + v);
                 } else {
-                    coeffs_map.insert(d.clone(), v.clone());
+                    coeffs_map.insert(*d, v.clone());
                 }
             }
         }
@@ -49,7 +49,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
             for i in 1..co_domain{
                 if TLMorphism::new(
                     coeffs_map.iter().map(|(dp, vp)|{
-                        let m = dp.clone() * TLDiagram::u(co_domain, i);
+                        let m = dp * &TLDiagram::u(co_domain, i);
                         (m.1, &pows[m.0] * vp)
                     }).collect(),
                     None
@@ -120,7 +120,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
 
     pub fn involute(&self) -> TLMorphism<R> {
         TLMorphism::new(
-            self.coeffs.iter().map(|(k, v)| (k.clone().involute(), v.clone())).collect(),
+            self.coeffs.iter().map(|(k, v)| (k.involute(), v.clone())).collect(),
             self.delta.clone()
         )
     }
@@ -187,7 +187,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     where F : Fn(&R) -> R {
         TLMorphism::new(
             self.coeffs.iter()
-                .map(|(k,v)| (k.clone(), f(v)))
+                .map(|(k,v)| (*k, f(v)))
                 .collect(),
             self.delta.clone()
         )
@@ -250,8 +250,8 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     fn add(self, other: &TLMorphism<R>) -> TLMorphism<R> {
         let delta = self.ring_point(&other);
         let mut ans = Vec::new();
-        ans.extend(self.coeffs.iter().map(|(k,v)| (k.clone(), v.clone())));
-        ans.extend(other.coeffs.iter().map(|(k,v)| (k.clone(), v.clone())));
+        ans.extend(self.coeffs.iter().map(|(k,v)| (*k, v.clone())));
+        ans.extend(other.coeffs.iter().map(|(k,v)| (*k, v.clone())));
         TLMorphism::new(ans, delta)
     }
 }
@@ -272,8 +272,8 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     fn sub(self, other: &TLMorphism<R>) -> TLMorphism<R> {
         let delta = self.ring_point(&other);
         let mut ans = Vec::new();
-        ans.extend(self.coeffs.iter().map(|(k,v)| (k.clone(), v.clone())));
-        ans.extend(other.coeffs.iter().map(|(k,v)|(k.clone(), -v.clone())));
+        ans.extend(self.coeffs.iter().map(|(k,v)| (*k, v.clone())));
+        ans.extend(other.coeffs.iter().map(|(k,v)|(*k, -v.clone())));
         TLMorphism::new(ans, delta)
     }
 }
@@ -359,7 +359,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
         for (d, v) in self.coeffs.iter() {
             ans_vec.extend(
                 other.coeffs.iter().map(|(dp, vp)|{
-                    (d.clone() | dp, v * vp)
+                    (*d | dp, v * vp)
                 })
             );
         }
