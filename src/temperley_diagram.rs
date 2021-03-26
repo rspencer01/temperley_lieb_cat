@@ -337,7 +337,7 @@ impl Serialisable for TLDiagram {
     fn deserialise(inpt : &str) -> Self {
         assert!(inpt.chars().nth(0) == Some('<'));
         assert!(inpt.chars().nth(inpt.len()-1) == Some('>'));
-        let mut items = inpt.split('.');
+        let mut items = inpt[1..inpt.len()-1].split('.');
         TLDiagram{
             domain : usize::deserialise(items.next().unwrap()),
             co_domain : usize::deserialise(items.next().unwrap()),
