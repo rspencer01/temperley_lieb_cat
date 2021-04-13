@@ -42,6 +42,11 @@ pub trait Ring : NumOps<Self, Self> + Zero + One + Eq + Clone {}
 /// Domains have no zero divisors
 pub trait Domain : Ring {}
 
+/// A marker trait to assert that this domain is a field
+///
+/// Fields have well defined inverses.
+pub trait Field : Domain {}
+
 impl NumOps<i128, i128> for i128 {}
 impl Signed for i128 {
     fn is_positive(&self) -> bool {

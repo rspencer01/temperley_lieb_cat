@@ -2,7 +2,7 @@
 
 use num::{One, Zero};
 use std::ops::{Add, Sub, Mul, Div, Rem, Neg};
-use crate::structures::{Signed, NumOps, Ring, Domain};
+use crate::structures::{Signed, NumOps, Ring, Domain, Field};
 use std::fmt::{Debug, Display};
 
 use crate::gcd::PartialGCD;
@@ -14,7 +14,7 @@ use crate::serial::Serialisable;
 /// Fractions, as constructed by `Fraction::new` are not always stored in lowest terms,
 /// but their denominators will always be positive.
 #[derive(Copy, Clone, Debug)]
-pub struct Fraction<T> {
+pub struct Fraction<T : Domain> {
     num : T,
     den : T
 }
@@ -49,8 +49,8 @@ where T : PartialGCD + Signed,
     }
 }
 
-impl<T> Fraction<T>
-where T : PartialGCD + Signed + Zero,
+impl<T: Domain> Fraction<T>
+where T : PartialGCD + Signed,
       for <'r> &'r T : NumOps<&'r T, T> + Rem<&'r T, Output=T> {
     pub fn is_integral(&self) -> bool {
         (self.num() % self.den()).is_zero()
@@ -86,7 +86,7 @@ where T : Clone + PartialGCD + Signed + NumOps<T,T> + std::fmt::Display,
 }
 */
 
-impl<T> Fraction<T> {
+impl<T : Domain> Fraction<T> {
     #[inline(always)]
     pub fn num(&self) -> &T {
         &self.num
@@ -98,7 +98,7 @@ impl<T> Fraction<T> {
     }
 }
 
-impl<T> PartialEq for Fraction<T>
+impl<T : Domain> PartialEq for Fraction<T>
 where T : PartialEq,
       for <'r> &'r T: NumOps<&'r T, T> {
     fn eq(&self, other: &Fraction<T>) -> bool {
@@ -106,7 +106,7 @@ where T : PartialEq,
     }
 }
 
-impl<T> Eq for Fraction<T>
+impl<T : Domain> Eq for Fraction<T>
 where T : Eq,
       for <'r> &'r T: NumOps<&'r T, T> {
 }
@@ -213,8 +213,7 @@ where T : Domain + PartialGCD + Signed,
     }
 }
 
-impl<T> From<T> for Fraction<T>
-where T : One {
+impl<T : Domain> From<T> for Fraction<T> {
     fn from(x : T) -> Fraction<T> {
         Fraction {
             num : x,
@@ -283,7 +282,7 @@ where T : PartialGCD + Signed,
     }
 }
 
-impl<T> Rem for Fraction<T> {
+impl<T : Domain> Rem for Fraction<T> {
     type Output = Self;
 
     fn rem(self, _other:Self) -> Self {
@@ -291,8 +290,7 @@ impl<T> Rem for Fraction<T> {
     }
 }
 
-impl<T> Neg for Fraction<T>
-where T : Neg<Output=T> {
+impl<T : Domain> Neg for Fraction<T> {
     type Output = Fraction<T>;
 
     fn neg(self) -> Fraction<T> {
@@ -303,8 +301,7 @@ where T : Neg<Output=T> {
     }
 }
 
-impl<T> Neg for &Fraction<T>
-where T : Clone + Neg<Output=T> {
+impl<T : Domain> Neg for &Fraction<T> {
     type Output = Fraction<T>;
 
     fn neg(self) -> Fraction<T> {
@@ -315,15 +312,13 @@ where T : Clone + Neg<Output=T> {
     }
 }
 
-impl<T> Display for Fraction<T>
-where T : Display {
+impl<T : Domain + Display> Display for Fraction<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "({})/({})", self.num, self.den)
     }
 }
 
-impl<T> Tex for Fraction<T>
-where T : One + Tex + Eq {
+impl<T : Domain + Tex> Tex for Fraction<T> {
     fn into_tex(&self) -> String {
         if self.den.is_one() {
             self.num.into_tex()
@@ -341,8 +336,8 @@ where T : One + Tex + Eq {
     }
 }
 
-impl<T> Signed for Fraction<T>
-where T : Clone + NumOps<T, T> + PartialGCD + Signed,
+impl<T : Domain + PartialGCD + Signed> Signed for Fraction<T> 
+where
       for<'r> &'r T: NumOps<&'r T, T> {
     fn is_positive(&self) -> bool {
         self.num.is_positive()
@@ -361,8 +356,7 @@ where T : Clone + NumOps<T, T> + PartialGCD + Signed,
     }
 }
 
-impl <T> PartialGCD for Fraction<T> 
-where T : Clone {
+impl <T : Domain> PartialGCD for Fraction<T>  {
     fn partial_gcd(&self, other: &Self) -> Self {
         (*other).clone()
     }
@@ -428,6 +422,10 @@ where T : PartialGCD + Signed,
       for<'r> &'r T: NumOps<&'r T, T> {}
 
 impl<T : Domain> Domain for Fraction<T>
+where T : PartialGCD + Signed,
+      for<'r> &'r T: NumOps<&'r T, T> {}
+
+impl<T : Domain> Field for Fraction<T>
 where T : PartialGCD + Signed,
       for<'r> &'r T: NumOps<&'r T, T> {}
 

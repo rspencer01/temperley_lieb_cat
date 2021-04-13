@@ -1,14 +1,14 @@
 extern crate num;
-use num::{Zero, One};
+use num::Zero;
 use std::ops::{Add, Sub, Mul, Div, Neg, BitOr};
 use std::collections::HashMap;
 use crate::TLDiagram;
 use crate::tex::Tex;
 use crate::serial::Serialisable;
-use crate::structures::{Signed, NumOps};
+use crate::structures::{Signed, NumOps, Ring};
 
 #[derive(Clone, Debug)]
-pub struct TLMorphism<R> {
+pub struct TLMorphism<R : Ring> {
     pub coeffs : HashMap<TLDiagram,R>,
     domain : usize,
     co_domain : usize,
@@ -16,7 +16,7 @@ pub struct TLMorphism<R> {
     pub right_kills : Vec<usize>,
 }
 
-impl<R:Clone + Zero + One + Eq + NumOps<R,R> > TLMorphism<R>
+impl<R: Ring> TLMorphism<R>
 where for<'r> &'r R : NumOps<&'r R, R> {
     pub fn new(coeffs : Vec<(TLDiagram, R)>, delta: Option<R>) -> TLMorphism<R> {
         let representative_diagram = &coeffs.first()
@@ -67,9 +67,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
             co_domain,
         }
     }
-}
 
-impl<R: Eq> TLMorphism<R> {
     /// Checks if the possibly pointed morphisms can correspond to the same pointed ring
     ///
     /// Since morphisms can be possibly pointed, this checks that if they are both pointed
@@ -85,9 +83,7 @@ impl<R: Eq> TLMorphism<R> {
     pub fn co_domain(&self) -> usize {
         self.co_domain
     }
-}
 
-impl<R: Eq + Clone> TLMorphism<R> {
     fn ring_point(&self, other : &TLMorphism<R>) -> Option<R> {
         assert!(self.ring_compatible(other));
         match self.delta.clone() {
@@ -95,10 +91,6 @@ impl<R: Eq + Clone> TLMorphism<R> {
             Some(x) => Some(x),
         }
     }
-}
-
-impl<R:Clone + Zero + One + Eq + NumOps<R,R> > TLMorphism<R>
-where for<'r> &'r R : NumOps<&'r R, R> {
 
     pub fn repoint(&mut self, delta : Option<R>) {
         self.delta = delta.clone();
@@ -219,7 +211,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     }
 }
 
-impl<R: Clone + Eq + Zero> PartialEq for TLMorphism<R>
+impl<R: Ring> PartialEq for TLMorphism<R>
 where for<'r> &'r R : NumOps<&'r R, R> {
     fn eq(&self, other : &TLMorphism<R>) -> bool {
         if self.co_domain() != other.co_domain() {
@@ -242,7 +234,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     }
 }
 
-impl<R: Clone + Zero + One + NumOps<R,R> + Eq> Add<TLMorphism<R>> for TLMorphism<R>
+impl<R: Ring> Add<TLMorphism<R>> for TLMorphism<R>
 where for<'r> &'r R : NumOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
@@ -251,7 +243,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     }
 }
 
-impl<R: Clone + Zero + One + NumOps<R,R> + Eq> Add<&TLMorphism<R>> for &TLMorphism<R>
+impl<R: Ring> Add<&TLMorphism<R>> for &TLMorphism<R>
 where for<'r> &'r R : NumOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
@@ -264,7 +256,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     }
 }
 
-impl<R: Clone + NumOps<R,R> + Eq + One + Zero> Sub<TLMorphism<R>> for TLMorphism<R>
+impl<R: Ring> Sub<TLMorphism<R>> for TLMorphism<R>
 where for<'r> &'r R : NumOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
@@ -273,7 +265,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     }
 }
 
-impl<R: Clone + NumOps<R,R> + Eq + One + Zero> Sub<&TLMorphism<R>> for &TLMorphism<R>
+impl<R: Ring> Sub<&TLMorphism<R>> for &TLMorphism<R>
 where for<'r> &'r R : NumOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
@@ -286,7 +278,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     }
 }
 
-impl<R: Clone + NumOps<R,R> + Eq + One + Zero> Neg for TLMorphism<R>
+impl<R: Ring> Neg for TLMorphism<R>
 where for<'r> &'r R : NumOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
@@ -295,7 +287,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     }
 }
 
-impl<R: Clone + Eq + One + Zero + NumOps<R,R>> Mul<TLMorphism<R>> for TLMorphism<R>
+impl<R: Ring> Mul<TLMorphism<R>> for TLMorphism<R>
 where for<'r> &'r R : NumOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
@@ -304,7 +296,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     }
 }
 
-impl<R: Clone + Eq + One + NumOps<R,R> + Zero> Mul<&TLMorphism<R>> for &TLMorphism<R>
+impl<R: Ring> Mul<&TLMorphism<R>> for &TLMorphism<R>
 where for<'r> &'r R : NumOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
@@ -346,7 +338,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     }
 }
 
-impl<R: Clone + Eq + One + Zero + NumOps<R,R>> BitOr<TLMorphism<R>> for TLMorphism<R>
+impl<R: Ring> BitOr<TLMorphism<R>> for TLMorphism<R>
 where for<'r> &'r R : NumOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
@@ -356,7 +348,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     }
 }
 
-impl<R: Clone + Eq + One + Zero + NumOps<R,R>> BitOr<&TLMorphism<R>> for &TLMorphism<R>
+impl<R: Ring> BitOr<&TLMorphism<R>> for &TLMorphism<R>
 where for<'r> &'r R : NumOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
@@ -378,7 +370,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     }
 }
 
-impl<R: Clone + Eq + One + Zero + NumOps<R,R>> Mul<&R> for &TLMorphism<R>
+impl<R: Ring> Mul<&R> for &TLMorphism<R>
 where for<'r> &'r R : NumOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
@@ -387,7 +379,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     }
 }
 
-impl<R: Clone + Eq + One + Zero + NumOps<R,R>> Mul<R> for &TLMorphism<R>
+impl<R: Ring> Mul<R> for &TLMorphism<R>
 where for<'r> &'r R : NumOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
@@ -397,7 +389,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
 }
 
 
-impl<R: Clone + Eq + One + Zero + NumOps<R,R>> Mul<&R> for TLMorphism<R>
+impl<R: Ring> Mul<&R> for TLMorphism<R>
 where for<'r> &'r R : NumOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
@@ -406,7 +398,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     }
 }
 
-impl<R: Clone + Eq + One + Zero + NumOps<R,R>> Mul<R> for TLMorphism<R>
+impl<R: Ring> Mul<R> for TLMorphism<R>
 where for<'r> &'r R : NumOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
@@ -415,7 +407,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     }
 }
 
-impl<R: Clone + Eq + One + Zero + NumOps<R,R>> Div<R> for TLMorphism<R>
+impl<R: Ring> Div<R> for TLMorphism<R>
 where for<'r> &'r R : NumOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
@@ -424,7 +416,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     }
 }
 
-impl<R: Clone + Eq + One + Zero + NumOps<R,R>> From<TLDiagram> for TLMorphism<R>
+impl<R: Ring> From<TLDiagram> for TLMorphism<R>
 where for<'r> &'r R : NumOps<&'r R, R> {
     fn from(diag : TLDiagram) -> TLMorphism<R> {
         TLMorphism::new(
@@ -434,7 +426,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     }
 }
 
-impl<R: Clone + Zero + One + NumOps<R,R> + Eq> num::Zero for TLMorphism<R>
+impl<R: Ring> num::Zero for TLMorphism<R>
 where for<'r> &'r R : NumOps<&'r R, R> {
     fn zero() -> TLMorphism<R> {
         unimplemented!()
@@ -445,7 +437,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     }
 }
 
-impl<R: Clone + Tex + Signed + Zero + One + Eq> Tex for TLMorphism<R> {
+impl<R: Ring + Tex + Signed> Tex for TLMorphism<R> {
     fn into_tex(&self) -> String {
         let mut ans = String::new();
         for (k,v) in self.coeffs.iter() {
@@ -480,7 +472,7 @@ impl<R: Clone + Tex + Signed + Zero + One + Eq> Tex for TLMorphism<R> {
     }
 }
 
-impl<R: Clone + NumOps<R,R> + Eq + Tex + Zero + One + Signed + Serialisable> Serialisable for TLMorphism<R>
+impl<R: Ring + Signed + Serialisable> Serialisable for TLMorphism<R>
 where for<'r> &'r R : NumOps<&'r R, R> {
     fn serialise(&self) -> String {
         let mut ans = String::new();
