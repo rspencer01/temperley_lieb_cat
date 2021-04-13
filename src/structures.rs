@@ -1,4 +1,7 @@
 //! Algebraic structures and definitions of numerical operations
+//!
+//! Really, this should be handled by the `Num` crate, but it assumes
+//! silly things like remainders for all "numbers".
 
 use crate::fraction::Fraction;
 use std::ops::{Add, Sub, Mul, Div, Neg};
@@ -20,5 +23,23 @@ pub trait NumOps<Rhs, Out>:
 {
 }
 
+/// A trait for types with well defined concepts of "negative" and "positive"
+pub trait Signed: Neg<Output = Self> {
+    fn is_positive(&self) -> bool;
+    fn is_negative(&self) -> bool;
+    fn abs(&self) -> Self;
+}
+
 impl NumOps<i128, i128> for i128 {}
+impl Signed for i128 {
+    fn is_positive(&self) -> bool {
+        *self > 0
+    }
+    fn is_negative(&self) -> bool {
+        *self < 0
+    }
+    fn abs(&self) -> Self {
+        i128::abs(*self)
+    }
+}
 impl NumOps<&i128, i128> for &i128 {}

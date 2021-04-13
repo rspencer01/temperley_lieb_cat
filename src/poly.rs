@@ -1,12 +1,11 @@
-use num::{Num, One, Signed, ToPrimitive, Zero};
+use num::{One, ToPrimitive, Zero};
 use std::fmt::{Debug, Display};
 use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
 
 use crate::fraction::Fraction;
 use crate::gcd::PartialGCD;
 use crate::serial::Serialisable;
-use crate::structures;
-use crate::structures::NumOps;
+use crate::structures::{Signed, NumOps, Q};
 use crate::tex::Tex;
 
 /// A polynomial in a single variable over a _field_.
@@ -352,18 +351,6 @@ where
     }
 }
 
-impl<T> Num for Polynomial<T>
-where
-    T: Clone + One + Zero + Eq,
-    for<'r> &'r T: NumOps<&'r T, T>,
-{
-    type FromStrRadixErr = ();
-
-    fn from_str_radix(_str: &str, _radix: u32) -> Result<Self, Self::FromStrRadixErr> {
-        Err(())
-    }
-}
-
 impl<T> Signed for Polynomial<T>
 where
     T: Clone + One + Zero + Signed + Eq,
@@ -384,14 +371,6 @@ where
             -self.clone()
         }
     }
-
-    fn abs_sub(&self, _: &Polynomial<T>) -> Polynomial<T> {
-        unimplemented!()
-    }
-
-    fn signum(&self) -> Polynomial<T> {
-        unimplemented!()
-    }
 }
 
 /// Casting an element to a polynomial in that element is via
@@ -405,8 +384,8 @@ where
     }
 }
 
-impl PartialGCD for Polynomial<structures::Q> {
-    fn partial_gcd(&self, other: &Polynomial<structures::Q>) -> Polynomial<structures::Q> {
+impl PartialGCD for Polynomial<Q> {
+    fn partial_gcd(&self, other: &Polynomial<Q>) -> Polynomial<Q> {
         if (self.0.iter().fold(0, |a, x| x.den().abs().max(a)) > 0xffffffff)
             || (self.0.iter().fold(0, |a, x| x.num().abs().max(a)) > 0xffffffff)
             || (other.0.iter().fold(0, |a, x| x.den().abs().max(a)) > 0xfffffffff)
@@ -477,7 +456,7 @@ where
 
 impl<T> Tex for Polynomial<T>
 where
-    T: Zero + One + Signed + Tex,
+    T: Zero + One + Signed + Tex + Eq,
     for<'r> &'r T: NumOps<&'r T, T>,
 {
     fn into_tex(&self) -> String {
@@ -518,7 +497,7 @@ where
     }
 }
 
-pub fn quantum<I: ToPrimitive>(n: I) -> Polynomial<structures::Q> {
+pub fn quantum<I: ToPrimitive>(n: I) -> Polynomial<Q> {
     let n: i128 = n.to_i64().unwrap() as i128;
     if n.is_zero() {
         return Polynomial::zero();
@@ -546,34 +525,33 @@ pub fn quantum<I: ToPrimitive>(n: I) -> Polynomial<structures::Q> {
     Polynomial::new(coeffs.as_slice())
 }
 
-impl Serialisable for Polynomial<structures::Q> {
+impl Serialisable for Polynomial<Q> {
     fn serialise(&self) -> String {
         self.0.serialise()
     }
 
     fn deserialise(inpt: &str) -> Self {
-        let res: Vec<structures::Q> = Vec::deserialise(inpt);
+        let res: Vec<Q> = Vec::deserialise(inpt);
         Polynomial::new(res.as_slice())
     }
 }
 
 impl<T> NumOps<Polynomial<T>, Polynomial<T>> for Polynomial<T>
 where
-    T: Clone + NumOps<T, T> + Signed + Zero + Eq,
+    T: Clone + NumOps<T, T> + Signed + Zero + Eq + One,
     for<'r> &'r T: NumOps<&'r T, T>,
 {
 }
 
 impl<'a, T: 'a> NumOps<&'a Polynomial<T>, Polynomial<T>> for &'a Polynomial<T>
 where
-    T: Clone + NumOps<T, T> + Signed + Zero + Eq,
+    T: Clone + NumOps<T, T> + Signed + Zero + Eq + One,
     for<'r> &'r T: NumOps<&'r T, T>,
 {
 }
 
 #[cfg(test)]
 mod tests {
-    use super::structures::Q;
     use super::*;
 
     #[test]

@@ -1,11 +1,11 @@
 extern crate num;
-use num::{Zero, Signed, One};
+use num::{Zero, One};
 use std::ops::{Add, Sub, Mul, Div, Neg, BitOr};
 use std::collections::HashMap;
 use crate::TLDiagram;
 use crate::tex::Tex;
 use crate::serial::Serialisable;
-use crate::structures::NumOps;
+use crate::structures::{Signed, NumOps};
 
 #[derive(Clone, Debug)]
 pub struct TLMorphism<R> {
@@ -445,7 +445,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     }
 }
 
-impl<R: Clone + Tex + Signed> Tex for TLMorphism<R> {
+impl<R: Clone + Tex + Signed + Zero + One + Eq> Tex for TLMorphism<R> {
     fn into_tex(&self) -> String {
         let mut ans = String::new();
         for (k,v) in self.coeffs.iter() {
@@ -480,7 +480,7 @@ impl<R: Clone + Tex + Signed> Tex for TLMorphism<R> {
     }
 }
 
-impl<R: Clone + NumOps<R,R> + Eq + Tex + Signed + Serialisable> Serialisable for TLMorphism<R>
+impl<R: Clone + NumOps<R,R> + Eq + Tex + Zero + One + Signed + Serialisable> Serialisable for TLMorphism<R>
 where for<'r> &'r R : NumOps<&'r R, R> {
     fn serialise(&self) -> String {
         let mut ans = String::new();
