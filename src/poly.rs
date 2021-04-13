@@ -400,7 +400,7 @@ impl PartialGCD for Polynomial<structures::Q> {
     }
 
     fn is_small(&self) -> bool {
-        self.degree() < 5
+        self.degree() == 0
     }
 }
 

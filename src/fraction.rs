@@ -13,7 +13,7 @@ use crate::serial::Serialisable;
 ///
 /// Fractions, as constructed by `Fraction::new` are not always stored in lowest terms,
 /// but their denominators will always be positive.
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct Fraction<T> {
     num : T,
     den : T
@@ -392,15 +392,19 @@ where T : Clone {
 }
 
 impl<T> Serialisable for Fraction<T>
-where T : Clone + Serialisable + PartialGCD + Signed,
+where T : Clone + Serialisable + PartialGCD + Signed + NumOps<T,T>,
       for <'r> &'r T : NumOps<&'r T, T> {
 
     fn serialise(&self) -> String {
-        format!("({})/({})", self.num.serialise(), self.den.serialise())
+        if self.den.is_one() {
+            format!("({})", self.num.serialise())
+        } else {
+            format!("({})/({})", self.num.serialise(), self.den.serialise())
+        }
     }
 
     fn deserialise(input : &str) -> Self {
-        let mut parts : Vec<&str> = Vec::new();
+        let mut parts = Vec::new();
         assert!(input.bytes().nth(0) == Some('(' as u8));
         let mut i = 0;
         let mut c = 1;
@@ -410,24 +414,27 @@ where T : Clone + Serialisable + PartialGCD + Signed,
             if input.bytes().nth(i) == Some('(' as u8) { c += 1; }
             if input.bytes().nth(i) == Some(')' as u8) { c -= 1; }
         }
+        parts.push(T::deserialise(&input[1..i]));
         i += 1;
-        assert!(input.bytes().nth(i) == Some('/' as u8));
-        parts.push(&input[1..i-1]);
-        i += 1;
-        assert!(input.bytes().nth(i) == Some('(' as u8));
-        let j = i+1;
-        let mut c = 1;
-        while c > 0 {
-            if input.bytes().nth(i) == None { panic!("Cannot read fraction"); }
+        if input.len() <= i {
+            parts.push(T::one());
+        } else {
+            assert!(input.bytes().nth(i) == Some('/' as u8));
             i += 1;
-            if input.bytes().nth(i) == Some('(' as u8) { c += 1; }
-            if input.bytes().nth(i) == Some(')' as u8) { c -= 1; }
+            assert!(input.bytes().nth(i) == Some('(' as u8));
+            let j = i+1;
+            let mut c = 1;
+            while c > 0 {
+                if input.bytes().nth(i) == None { panic!("Cannot read fraction"); }
+                i += 1;
+                if input.bytes().nth(i) == Some('(' as u8) { c += 1; }
+                if input.bytes().nth(i) == Some(')' as u8) { c -= 1; }
+            }
+            parts.push(T::deserialise(&input[j..i]));
         }
-        parts.push(&input[j..i]);
-        Fraction::new(
-            T::deserialise(parts[0]),
-            T::deserialise(parts[1]),
-        )
+        let den = parts.pop().unwrap();
+        let num = parts.pop().unwrap();
+        Fraction::new(num, den)
     }
 }
 
