@@ -24,7 +24,7 @@ pub trait Tex {
     /// when the underlying file changes.
     fn render_tex(&self) {
         let document = format!(
-    "\\documentclass[crop=true]{{standalone}}
+            "\\documentclass[crop=true]{{standalone}}
     \\standaloneconfig{{border=1em}}
     \\usepackage{{amsmath}}
     \\usepackage{{amssymb}}
@@ -35,14 +35,17 @@ pub trait Tex {
     {}
     $
 
-    \\end{{document}}", self.into_tex());
+    \\end{{document}}",
+            self.into_tex()
+        );
         let mut command = Command::new(which("pdflatex").expect("Could not find latex compiler"))
             .stdin(Stdio::piped())
             .stdout(Stdio::null())
             .arg("-shell-escape")
             .spawn()
             .unwrap();
-        command.stdin
+        command
+            .stdin
             .as_mut()
             .unwrap()
             .write_all(&document.into_bytes())
@@ -51,10 +54,9 @@ pub trait Tex {
     }
 }
 
-
 impl Tex for i128 {
     fn into_tex(&self) -> String {
-        format!("{}",self)
+        format!("{}", self)
     }
 
     fn is_multiterm(&self) -> bool {

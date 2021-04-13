@@ -152,7 +152,7 @@ where
     }
 }
 
-impl<T: GCDDomain + Signed,> Mul for Fraction<T>
+impl<T: GCDDomain + Signed> Mul for Fraction<T>
 where
     for<'r> &'r T: RingOps<&'r T, T>,
 {
@@ -437,9 +437,8 @@ impl<T: GCDDomain + Signed> Domain for Fraction<T> where for<'r> &'r T: RingOps<
 
 impl<T: GCDDomain + Signed> Field for Fraction<T> where for<'r> &'r T: RingOps<&'r T, T> {}
 
-impl<'a, T: 'a+ GCDDomain + Signed,> RingOps<&'a Fraction<T>, Fraction<T>> for &'a Fraction<T>
-where
-    for<'r> &'r T: RingOps<&'r T, T>,
+impl<'a, T: 'a + GCDDomain + Signed> RingOps<&'a Fraction<T>, Fraction<T>> for &'a Fraction<T> where
+    for<'r> &'r T: RingOps<&'r T, T>
 {
 }
 

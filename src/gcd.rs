@@ -13,7 +13,7 @@ pub trait PartialGCD {
     fn is_small(&self) -> bool;
 }
 
-impl<T:GCD> PartialGCD for T {
+impl<T: GCD> PartialGCD for T {
     #[inline(always)]
     fn partial_gcd(&self, other: &Self) -> Self {
         self.gcd(other)
@@ -42,7 +42,6 @@ impl GCD for i128 {
         a
     }
 }
-
 
 #[cfg(test)]
 mod tests {

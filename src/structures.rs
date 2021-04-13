@@ -5,7 +5,7 @@
 
 use crate::fraction::Fraction;
 use crate::gcd::PartialGCD;
-use std::ops::{Add, Sub, Mul, Div, Neg};
+use std::ops::{Add, Div, Mul, Neg, Sub};
 
 /// Rational numbers to 128 bits of accuracy
 pub type Q = Fraction<i128>;
@@ -38,7 +38,7 @@ pub trait Signed: Neg<Output = Self> {
 ///
 /// These items can be added, subtracted, divided and multiplied.
 /// There is a well defined concept of negatives and zero and one.
-pub trait Ring : RingOps<Self, Self> + Eq + Clone {
+pub trait Ring: RingOps<Self, Self> + Eq + Clone {
     fn zero() -> Self;
     fn is_zero(&self) -> bool;
     fn one() -> Self;
@@ -48,7 +48,7 @@ pub trait Ring : RingOps<Self, Self> + Eq + Clone {
 /// A marker trait to assert that this ring is a domain
 ///
 /// Domains have no zero divisors
-pub trait Domain : Ring {}
+pub trait Domain: Ring {}
 
 /// A marker trait to assert that this domain is a GCD domain
 ///
@@ -58,12 +58,12 @@ pub trait Domain : Ring {}
 ///
 /// Implimentations of [GCDDomain] do not need to be able to find
 /// the greatest common divisor, and hence only need implement [gcd::PartialGCD].
-pub trait GCDDomain : Domain + PartialGCD {}
+pub trait GCDDomain: Domain + PartialGCD {}
 
 /// A marker trait to assert that this domain is a field
 ///
 /// Fields have well defined inverses.
-pub trait Field : Domain {}
+pub trait Field: Domain {}
 
 impl RingOps<i128, i128> for i128 {}
 impl Signed for i128 {
@@ -78,10 +78,18 @@ impl Signed for i128 {
     }
 }
 impl Ring for i128 {
-    fn zero() -> Self { 0 }
-    fn is_zero(&self) -> bool { *self == 0 }
-    fn one() -> Self { 1 }
-    fn is_one(&self) -> bool { *self == 1 }
+    fn zero() -> Self {
+        0
+    }
+    fn is_zero(&self) -> bool {
+        *self == 0
+    }
+    fn one() -> Self {
+        1
+    }
+    fn is_one(&self) -> bool {
+        *self == 1
+    }
 }
 impl Domain for i128 {}
 impl GCDDomain for i128 {}

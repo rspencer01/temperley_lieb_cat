@@ -1,11 +1,11 @@
-use num_traits::{ToPrimitive};
+use num_traits::ToPrimitive;
 use std::fmt::{Debug, Display};
 use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
 
 use crate::fraction::Fraction;
 use crate::gcd::PartialGCD;
 use crate::serial::Serialisable;
-use crate::structures::{Signed, RingOps, Q, Ring, Domain, GCDDomain};
+use crate::structures::{Domain, GCDDomain, Ring, RingOps, Signed, Q};
 use crate::tex::Tex;
 
 /// A polynomial in a single variable over a _ring_.
@@ -16,8 +16,7 @@ use crate::tex::Tex;
 #[derive(Clone, PartialEq, Eq)]
 pub struct Polynomial<T>(Vec<T>);
 
-impl<R : Ring> Polynomial<R>
-{
+impl<R: Ring> Polynomial<R> {
     pub fn new<V>(in_coeffs: &[V]) -> Polynomial<R>
     where
         V: Clone + Into<R>,
@@ -76,8 +75,9 @@ impl<R : Ring> Polynomial<R>
         Polynomial::new(&[R::zero(), R::one()])
     }
 }
-impl<R : Ring + Signed> Polynomial<R> where
-    for<'r> &'r R: RingOps<&'r R, R> + Div<&'r R, Output=R>,
+impl<R: Ring + Signed> Polynomial<R>
+where
+    for<'r> &'r R: RingOps<&'r R, R> + Div<&'r R, Output = R>,
 {
     fn div_mod(&self, other: &Self) -> (Self, Self) {
         assert!(!other.is_zero(), "Dividing polynomial by zero");
@@ -112,7 +112,7 @@ impl<R : Ring + Signed> Polynomial<R> where
     }
 }
 
-impl<T : Ring> Add<Polynomial<T>> for Polynomial<T>
+impl<T: Ring> Add<Polynomial<T>> for Polynomial<T>
 where
     for<'r> &'r T: RingOps<&'r T, T>,
 {
@@ -123,7 +123,7 @@ where
     }
 }
 
-impl<T : Ring> Add<&Polynomial<T>> for &Polynomial<T>
+impl<T: Ring> Add<&Polynomial<T>> for &Polynomial<T>
 where
     for<'r> &'r T: RingOps<&'r T, T>,
 {
@@ -161,7 +161,7 @@ where
     }
 }
 
-impl<T : Ring> Sub<Polynomial<T>> for Polynomial<T>
+impl<T: Ring> Sub<Polynomial<T>> for Polynomial<T>
 where
     for<'r> &'r T: RingOps<&'r T, T>,
 {
@@ -172,7 +172,7 @@ where
     }
 }
 
-impl<T : Ring> Sub<&Polynomial<T>> for &Polynomial<T>
+impl<T: Ring> Sub<&Polynomial<T>> for &Polynomial<T>
 where
     for<'r> &'r T: RingOps<&'r T, T>,
 {
@@ -191,7 +191,7 @@ where
     }
 }
 
-impl<T : Ring> Sub<T> for Polynomial<T>
+impl<T: Ring> Sub<T> for Polynomial<T>
 where
     for<'r> &'r T: RingOps<&'r T, T>,
 {
@@ -202,7 +202,7 @@ where
     }
 }
 
-impl<T : Ring> Mul<Polynomial<T>> for Polynomial<T>
+impl<T: Ring> Mul<Polynomial<T>> for Polynomial<T>
 where
     for<'r> &'r T: RingOps<&'r T, T>,
 {
@@ -213,7 +213,7 @@ where
     }
 }
 
-impl<T : Ring> Mul<&Polynomial<T>> for &Polynomial<T>
+impl<T: Ring> Mul<&Polynomial<T>> for &Polynomial<T>
 where
     for<'r> &'r T: RingOps<&'r T, T>,
 {
@@ -232,7 +232,7 @@ where
     }
 }
 
-impl<T : Ring> Mul<T> for Polynomial<T>
+impl<T: Ring> Mul<T> for Polynomial<T>
 where
     for<'r> &'r T: RingOps<&'r T, T>,
 {
@@ -243,7 +243,7 @@ where
     }
 }
 
-impl<T : Ring> Div<T> for Polynomial<T>
+impl<T: Ring> Div<T> for Polynomial<T>
 where
     for<'r> &'r T: RingOps<&'r T, T>,
 {
@@ -255,7 +255,7 @@ where
     }
 }
 
-impl<T : Ring + Signed> Div<Polynomial<T>> for Polynomial<T>
+impl<T: Ring + Signed> Div<Polynomial<T>> for Polynomial<T>
 where
     for<'r> &'r T: RingOps<&'r T, T>,
 {
@@ -266,7 +266,7 @@ where
     }
 }
 
-impl<T : Ring + Signed> Div<&Polynomial<T>> for &Polynomial<T>
+impl<T: Ring + Signed> Div<&Polynomial<T>> for &Polynomial<T>
 where
     for<'r> &'r T: RingOps<&'r T, T>,
 {
@@ -277,7 +277,7 @@ where
     }
 }
 
-impl<T : Ring + Signed> Rem<Polynomial<T>> for Polynomial<T>
+impl<T: Ring + Signed> Rem<Polynomial<T>> for Polynomial<T>
 where
     for<'r> &'r T: RingOps<&'r T, T>,
 {
@@ -288,7 +288,7 @@ where
     }
 }
 
-impl<T : Ring + Signed> Rem<&Polynomial<T>> for &Polynomial<T>
+impl<T: Ring + Signed> Rem<&Polynomial<T>> for &Polynomial<T>
 where
     for<'r> &'r T: RingOps<&'r T, T>,
 {
@@ -299,7 +299,7 @@ where
     }
 }
 
-impl<T : Ring + Signed> Signed for Polynomial<T>
+impl<T: Ring + Signed> Signed for Polynomial<T>
 where
     for<'r> &'r T: RingOps<&'r T, T>,
 {
@@ -322,9 +322,7 @@ where
 
 /// Casting an element to a polynomial in that element is via
 /// the usual injection of R into R[X].
-impl<T : Ring> From<T> for Polynomial<T>
-where
-{
+impl<T: Ring> From<T> for Polynomial<T> {
     fn from(val: T) -> Polynomial<T> {
         Polynomial::new(&[val])
     }
@@ -365,8 +363,7 @@ impl PartialGCD for Polynomial<Q> {
     }
 }
 
-impl<T : Ring + Display> Display for Polynomial<T>
-{
+impl<T: Ring + Display> Display for Polynomial<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let mut s = false;
         for i in 0..self.degree() + 1 {
@@ -389,15 +386,13 @@ impl<T : Ring + Display> Display for Polynomial<T>
     }
 }
 
-impl<T : Ring + Display> Debug for Polynomial<T>
-where
-{
+impl<T: Ring + Display> Debug for Polynomial<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self)
     }
 }
 
-impl<T : Ring + Signed + Tex> Tex for Polynomial<T>
+impl<T: Ring + Signed + Tex> Tex for Polynomial<T>
 where
     for<'r> &'r T: RingOps<&'r T, T>,
 {
@@ -478,13 +473,12 @@ impl Serialisable for Polynomial<Q> {
     }
 }
 
-impl<T : Ring + Signed> RingOps<Polynomial<T>, Polynomial<T>> for Polynomial<T>
-where
-    for<'r> &'r T: RingOps<&'r T, T>,
+impl<T: Ring + Signed> RingOps<Polynomial<T>, Polynomial<T>> for Polynomial<T> where
+    for<'r> &'r T: RingOps<&'r T, T>
 {
 }
 
-impl<T : Ring + Signed> Ring for Polynomial<T>
+impl<T: Ring + Signed> Ring for Polynomial<T>
 where
     for<'r> &'r T: RingOps<&'r T, T>,
 {
@@ -501,18 +495,15 @@ where
     }
     fn is_one(&self) -> bool {
         self.degree() == 0 && self.hightest_term().is_one()
- }   }
+    }
+}
 
-impl<T : Domain + Signed> Domain for Polynomial<T>
-where
-    for<'r> &'r T: RingOps<&'r T, T>,
-{}
+impl<T: Domain + Signed> Domain for Polynomial<T> where for<'r> &'r T: RingOps<&'r T, T> {}
 
-impl GCDDomain for Polynomial<Q>{}
+impl GCDDomain for Polynomial<Q> {}
 
-impl<'a, T: 'a + Ring + Signed> RingOps<&'a Polynomial<T>, Polynomial<T>> for &'a Polynomial<T>
-where
-    for<'r> &'r T: RingOps<&'r T, T>,
+impl<'a, T: 'a + Ring + Signed> RingOps<&'a Polynomial<T>, Polynomial<T>> for &'a Polynomial<T> where
+    for<'r> &'r T: RingOps<&'r T, T>
 {
 }
 

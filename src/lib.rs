@@ -1,23 +1,23 @@
-#![recursion_limit="16"]
+#![recursion_limit = "16"]
 
 #[macro_use]
 extern crate lazy_static;
 
-mod serial;
-mod temperley_diagram;
-mod temperley;
+mod fraction;
 mod gcd;
 mod jones_wenzl;
-mod fraction;
 mod poly;
+mod serial;
+mod temperley;
+mod temperley_diagram;
 mod tex;
 
 pub use fraction::Fraction;
+pub use jones_wenzl::{jw, jwlp};
 pub use poly::{quantum, Polynomial};
-pub use temperley_diagram::TLDiagram;
-pub use temperley::TLMorphism;
-pub use jones_wenzl::{jwlp, jw};
 pub use serial::Serialisable;
+pub use temperley::TLMorphism;
+pub use temperley_diagram::TLDiagram;
 pub use tex::Tex;
 
 pub mod structures;
