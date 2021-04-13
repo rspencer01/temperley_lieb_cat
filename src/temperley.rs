@@ -173,7 +173,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
             .collect()
     }
 
-    fn map_on_diagrams<F>(&self, f : F) -> TLMorphism<R>
+    pub fn map_on_diagrams<F>(&self, f : F) -> TLMorphism<R>
     where F : Fn(&TLDiagram) -> TLDiagram {
         TLMorphism::new(
             self.coeffs.iter()
@@ -183,7 +183,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
         )
     }
 
-    fn map_on_coeffs<F>(&self, f : F) -> TLMorphism<R>
+    pub fn map_on_coeffs<F>(&self, f : F) -> TLMorphism<R>
     where F : Fn(&R) -> R {
         TLMorphism::new(
             self.coeffs.iter()
