@@ -37,6 +37,7 @@ impl TLDiagram {
         TLDiagram::new(n, n, 1<<(i+1), 1<<(i+1))
     }
 
+    // IS this correct???
     pub fn big_u(n :usize, i : usize, j : usize) -> TLDiagram {
         TLDiagram::new(n, n, (1<<(i+j+1)) - (1<<i),(1<<(i+j+1)) - (1<<i))
     }
@@ -50,7 +51,7 @@ impl TLDiagram {
     }
 
     pub fn propagation(&self) -> usize {
-        self.domain - self.left_tab.count_ones() as usize
+        self.domain - 2*self.left_tab.count_ones() as usize
     }
 
     pub fn involute(self) -> TLDiagram {
@@ -89,6 +90,10 @@ impl TLDiagram {
 
     pub fn cup(n: usize, i: usize) -> TLDiagram {
         TLDiagram::cap(n,i).involute()
+    }
+
+    pub fn big_cap(n :usize, i : usize, j : usize) -> TLDiagram {
+        TLDiagram::new(n, n-2*j, (1<<(i+j+1)) - (1<<i+1),0)
     }
 
     pub fn id(n: usize) -> TLDiagram {
