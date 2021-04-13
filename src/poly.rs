@@ -1,11 +1,11 @@
-use num::{One, ToPrimitive, Zero};
+use num_traits::{ToPrimitive};
 use std::fmt::{Debug, Display};
 use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
 
 use crate::fraction::Fraction;
 use crate::gcd::PartialGCD;
 use crate::serial::Serialisable;
-use crate::structures::{Signed, NumOps, Q, Ring, Domain};
+use crate::structures::{Signed, RingOps, Q, Ring, Domain, GCDDomain};
 use crate::tex::Tex;
 
 /// A polynomial in a single variable over a _ring_.
@@ -61,7 +61,7 @@ impl<R : Ring> Polynomial<R>
 
     pub fn eval<S>(&self, x: S, one: S) -> S
     where
-        for<'r> S: Zero + Clone + Mul<Output = S> + Mul<&'r R, Output = S>,
+        for<'r> S: Clone + Add<Output = S> + Mul<Output = S> + Mul<&'r R, Output = S>,
     {
         let mut ans = one * self.coeff(0);
         let mut xp = x.clone();
@@ -76,8 +76,8 @@ impl<R : Ring> Polynomial<R>
         Polynomial::new(&[R::zero(), R::one()])
     }
 }
-impl<R : Ring> Polynomial<R> where
-    for<'r> &'r R: NumOps<&'r R, R>,
+impl<R : Ring + Signed> Polynomial<R> where
+    for<'r> &'r R: RingOps<&'r R, R> + Div<&'r R, Output=R>,
 {
     fn div_mod(&self, other: &Self) -> (Self, Self) {
         assert!(!other.is_zero(), "Dividing polynomial by zero");
@@ -114,7 +114,7 @@ impl<R : Ring> Polynomial<R> where
 
 impl<T : Ring> Add<Polynomial<T>> for Polynomial<T>
 where
-    for<'r> &'r T: NumOps<&'r T, T>,
+    for<'r> &'r T: RingOps<&'r T, T>,
 {
     type Output = Polynomial<T>;
 
@@ -125,7 +125,7 @@ where
 
 impl<T : Ring> Add<&Polynomial<T>> for &Polynomial<T>
 where
-    for<'r> &'r T: NumOps<&'r T, T>,
+    for<'r> &'r T: RingOps<&'r T, T>,
 {
     type Output = Polynomial<T>;
 
@@ -141,8 +141,7 @@ where
 
 impl<T> Neg for Polynomial<T>
 where
-    T: Zero,
-    for<'r> &'r T: NumOps<&'r T, T>,
+    for<'r> &'r T: RingOps<&'r T, T>,
 {
     type Output = Polynomial<T>;
 
@@ -153,8 +152,7 @@ where
 
 impl<T> Neg for &Polynomial<T>
 where
-    T: Zero,
-    for<'r> &'r T: NumOps<&'r T, T>,
+    for<'r> &'r T: RingOps<&'r T, T>,
 {
     type Output = Polynomial<T>;
 
@@ -165,7 +163,7 @@ where
 
 impl<T : Ring> Sub<Polynomial<T>> for Polynomial<T>
 where
-    for<'r> &'r T: NumOps<&'r T, T>,
+    for<'r> &'r T: RingOps<&'r T, T>,
 {
     type Output = Polynomial<T>;
 
@@ -176,7 +174,7 @@ where
 
 impl<T : Ring> Sub<&Polynomial<T>> for &Polynomial<T>
 where
-    for<'r> &'r T: NumOps<&'r T, T>,
+    for<'r> &'r T: RingOps<&'r T, T>,
 {
     type Output = Polynomial<T>;
 
@@ -195,7 +193,7 @@ where
 
 impl<T : Ring> Sub<T> for Polynomial<T>
 where
-    for<'r> &'r T: NumOps<&'r T, T>,
+    for<'r> &'r T: RingOps<&'r T, T>,
 {
     type Output = Polynomial<T>;
 
@@ -206,7 +204,7 @@ where
 
 impl<T : Ring> Mul<Polynomial<T>> for Polynomial<T>
 where
-    for<'r> &'r T: NumOps<&'r T, T>,
+    for<'r> &'r T: RingOps<&'r T, T>,
 {
     type Output = Polynomial<T>;
 
@@ -217,7 +215,7 @@ where
 
 impl<T : Ring> Mul<&Polynomial<T>> for &Polynomial<T>
 where
-    for<'r> &'r T: NumOps<&'r T, T>,
+    for<'r> &'r T: RingOps<&'r T, T>,
 {
     type Output = Polynomial<T>;
 
@@ -236,7 +234,7 @@ where
 
 impl<T : Ring> Mul<T> for Polynomial<T>
 where
-    for<'r> &'r T: NumOps<&'r T, T>,
+    for<'r> &'r T: RingOps<&'r T, T>,
 {
     type Output = Self;
 
@@ -247,7 +245,7 @@ where
 
 impl<T : Ring> Div<T> for Polynomial<T>
 where
-    for<'r> &'r T: NumOps<&'r T, T>,
+    for<'r> &'r T: RingOps<&'r T, T>,
 {
     type Output = Self;
 
@@ -257,9 +255,9 @@ where
     }
 }
 
-impl<T : Ring> Div<Polynomial<T>> for Polynomial<T>
+impl<T : Ring + Signed> Div<Polynomial<T>> for Polynomial<T>
 where
-    for<'r> &'r T: NumOps<&'r T, T>,
+    for<'r> &'r T: RingOps<&'r T, T>,
 {
     type Output = Polynomial<T>;
 
@@ -268,9 +266,9 @@ where
     }
 }
 
-impl<T : Ring> Div<&Polynomial<T>> for &Polynomial<T>
+impl<T : Ring + Signed> Div<&Polynomial<T>> for &Polynomial<T>
 where
-    for<'r> &'r T: NumOps<&'r T, T>,
+    for<'r> &'r T: RingOps<&'r T, T>,
 {
     type Output = Polynomial<T>;
 
@@ -279,32 +277,9 @@ where
     }
 }
 
-impl<T : Ring> One for Polynomial<T>
+impl<T : Ring + Signed> Rem<Polynomial<T>> for Polynomial<T>
 where
-    for<'r> &'r T: NumOps<&'r T, T>,
-{
-    fn one() -> Self {
-        Polynomial::new(&[T::one()])
-    }
-}
-
-impl<T : Ring> Zero for Polynomial<T>
-where
-    for<'r> &'r T: NumOps<&'r T, T>,
-{
-    fn zero() -> Self {
-        let c: [T; 0] = [];
-        Polynomial::new(&c)
-    }
-
-    fn is_zero(&self) -> bool {
-        self.degree() == 0 && self.hightest_term().is_zero()
-    }
-}
-
-impl<T : Ring> Rem<Polynomial<T>> for Polynomial<T>
-where
-    for<'r> &'r T: NumOps<&'r T, T>,
+    for<'r> &'r T: RingOps<&'r T, T>,
 {
     type Output = Polynomial<T>;
 
@@ -313,9 +288,9 @@ where
     }
 }
 
-impl<T : Ring> Rem<&Polynomial<T>> for &Polynomial<T>
+impl<T : Ring + Signed> Rem<&Polynomial<T>> for &Polynomial<T>
 where
-    for<'r> &'r T: NumOps<&'r T, T>,
+    for<'r> &'r T: RingOps<&'r T, T>,
 {
     type Output = Polynomial<T>;
 
@@ -326,7 +301,7 @@ where
 
 impl<T : Ring + Signed> Signed for Polynomial<T>
 where
-    for<'r> &'r T: NumOps<&'r T, T>,
+    for<'r> &'r T: RingOps<&'r T, T>,
 {
     fn is_positive(&self) -> bool {
         self.hightest_term().is_positive()
@@ -424,7 +399,7 @@ where
 
 impl<T : Ring + Signed + Tex> Tex for Polynomial<T>
 where
-    for<'r> &'r T: NumOps<&'r T, T>,
+    for<'r> &'r T: RingOps<&'r T, T>,
 {
     fn into_tex(&self) -> String {
         let mut ans = String::new();
@@ -503,25 +478,41 @@ impl Serialisable for Polynomial<Q> {
     }
 }
 
-impl<T : Ring + Signed> NumOps<Polynomial<T>, Polynomial<T>> for Polynomial<T>
+impl<T : Ring + Signed> RingOps<Polynomial<T>, Polynomial<T>> for Polynomial<T>
 where
-    for<'r> &'r T: NumOps<&'r T, T>,
+    for<'r> &'r T: RingOps<&'r T, T>,
 {
 }
 
 impl<T : Ring + Signed> Ring for Polynomial<T>
 where
-    for<'r> &'r T: NumOps<&'r T, T>,
-{}
+    for<'r> &'r T: RingOps<&'r T, T>,
+{
+    fn zero() -> Self {
+        let c: [T; 0] = [];
+        Polynomial::new(&c)
+    }
+
+    fn is_zero(&self) -> bool {
+        self.degree() == 0 && self.hightest_term().is_zero()
+    }
+    fn one() -> Self {
+        Polynomial::new(&[T::one()])
+    }
+    fn is_one(&self) -> bool {
+        self.degree() == 0 && self.hightest_term().is_one()
+ }   }
 
 impl<T : Domain + Signed> Domain for Polynomial<T>
 where
-    for<'r> &'r T: NumOps<&'r T, T>,
+    for<'r> &'r T: RingOps<&'r T, T>,
 {}
 
-impl<'a, T: 'a + Ring + Signed> NumOps<&'a Polynomial<T>, Polynomial<T>> for &'a Polynomial<T>
+impl GCDDomain for Polynomial<Q>{}
+
+impl<'a, T: 'a + Ring + Signed> RingOps<&'a Polynomial<T>, Polynomial<T>> for &'a Polynomial<T>
 where
-    for<'r> &'r T: NumOps<&'r T, T>,
+    for<'r> &'r T: RingOps<&'r T, T>,
 {
 }
 

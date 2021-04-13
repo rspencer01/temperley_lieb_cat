@@ -3,8 +3,7 @@
 use temperley_lieb_cat::fraction::Fraction;
 use temperley_lieb_cat::poly::{quantum, Polynomial};
 use temperley_lieb_cat::{TLMorphism, TLDiagram};
-use temperley_lieb_cat::structures::Q;
-use num::One;
+use temperley_lieb_cat::structures::{Ring, Q};
 
 #[test]
 fn manual_jw3() {

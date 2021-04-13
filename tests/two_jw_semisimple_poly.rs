@@ -3,8 +3,7 @@
 use temperley_lieb_cat::fraction::Fraction;
 use temperley_lieb_cat::poly::{quantum, Polynomial};
 use temperley_lieb_cat::{TLMorphism, jw};
-use temperley_lieb_cat::structures::Q;
-use num::{One, Zero};
+use temperley_lieb_cat::structures::{Ring, Q};
 
 type R = Fraction<Polynomial<Q>>;
 

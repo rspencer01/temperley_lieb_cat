@@ -3,7 +3,7 @@
 /// This can be done over integers
 
 use temperley_lieb_cat::{TLMorphism, TLDiagram};
-use num::Zero;
+use temperley_lieb_cat::structures::Ring;
 
 #[test]
 fn test_jw3over2() {

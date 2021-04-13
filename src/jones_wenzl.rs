@@ -2,9 +2,8 @@ use crate::poly::{quantum, Polynomial};
 use crate::temperley::TLMorphism;
 use crate::temperley_diagram::TLDiagram;
 use crate::fraction::Fraction;
-use crate::structures::Q;
+use crate::structures::{Ring, Q};
 use std::collections::HashMap;
-use num::{One, Zero};
 use std::sync::Mutex;
 
 lazy_static! {
@@ -122,7 +121,6 @@ pub fn jwlp(n : usize, l : usize, p : usize) -> TLMorphism<Fraction<Polynomial<Q
 #[cfg(test)]
 mod test {
     use super::*;
-    use num::Zero;
 
     #[test]
     fn general_jw() {

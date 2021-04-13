@@ -3,8 +3,8 @@
 //! Really, this should be handled by the `Num` crate, but it assumes
 //! silly things like remainders for all "numbers".
 
-use num::{Zero, One};
 use crate::fraction::Fraction;
+use crate::gcd::PartialGCD;
 use std::ops::{Add, Sub, Mul, Div, Neg};
 
 /// Rational numbers to 128 bits of accuracy
@@ -13,9 +13,12 @@ pub type Q = Fraction<i128>;
 /// A trait describing numerical operations `+ - * /` on a type
 /// with another type
 ///
-/// You can use this to bind your types, for example `A : NumOps<Rhs=A, Out=A>` for an algebra
-/// or `A : NumOps<Rhs=B, Out=B>` for a ring homomorphism $A \to B$.
-pub trait NumOps<Rhs, Out>:
+/// You can use this to bind your types, for example `A : RingOps<Rhs=A, Out=A>` for an algebra
+/// or `A : RingOps<Rhs=B, Out=B>` for a ring homomorphism $A \to B$.
+///
+/// Note that many rings don't define a division operator.  It is acceptable to leave this
+/// as unimplemented.
+pub trait RingOps<Rhs, Out>:
     Add<Rhs, Output = Out>
     + Sub<Rhs, Output = Out>
     + Mul<Rhs, Output = Out>
@@ -35,19 +38,34 @@ pub trait Signed: Neg<Output = Self> {
 ///
 /// These items can be added, subtracted, divided and multiplied.
 /// There is a well defined concept of negatives and zero and one.
-pub trait Ring : NumOps<Self, Self> + Zero + One + Eq + Clone {}
+pub trait Ring : RingOps<Self, Self> + Eq + Clone {
+    fn zero() -> Self;
+    fn is_zero(&self) -> bool;
+    fn one() -> Self;
+    fn is_one(&self) -> bool;
+}
 
 /// A marker trait to assert that this ring is a domain
 ///
 /// Domains have no zero divisors
 pub trait Domain : Ring {}
 
+/// A marker trait to assert that this domain is a GCD domain
+///
+/// A GCD domain is one for which each pair of elements has
+/// a greatest common divisor.  Such domains have a well defined
+/// concept of division with remainder.
+///
+/// Implimentations of [GCDDomain] do not need to be able to find
+/// the greatest common divisor, and hence only need implement [gcd::PartialGCD].
+pub trait GCDDomain : Domain + PartialGCD {}
+
 /// A marker trait to assert that this domain is a field
 ///
 /// Fields have well defined inverses.
 pub trait Field : Domain {}
 
-impl NumOps<i128, i128> for i128 {}
+impl RingOps<i128, i128> for i128 {}
 impl Signed for i128 {
     fn is_positive(&self) -> bool {
         *self > 0
@@ -59,7 +77,13 @@ impl Signed for i128 {
         i128::abs(*self)
     }
 }
-impl Ring for i128 {}
+impl Ring for i128 {
+    fn zero() -> Self { 0 }
+    fn is_zero(&self) -> bool { *self == 0 }
+    fn one() -> Self { 1 }
+    fn is_one(&self) -> bool { *self == 1 }
+}
 impl Domain for i128 {}
+impl GCDDomain for i128 {}
 
-impl NumOps<&i128, i128> for &i128 {}
+impl RingOps<&i128, i128> for &i128 {}

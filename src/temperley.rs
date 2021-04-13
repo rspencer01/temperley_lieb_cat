@@ -1,11 +1,9 @@
-extern crate num;
-use num::Zero;
 use std::ops::{Add, Sub, Mul, Div, Neg, BitOr};
 use std::collections::HashMap;
 use crate::TLDiagram;
 use crate::tex::Tex;
 use crate::serial::Serialisable;
-use crate::structures::{Signed, NumOps, Ring};
+use crate::structures::{Signed, RingOps, Ring};
 
 #[derive(Clone, Debug)]
 pub struct TLMorphism<R : Ring> {
@@ -17,7 +15,7 @@ pub struct TLMorphism<R : Ring> {
 }
 
 impl<R: Ring> TLMorphism<R>
-where for<'r> &'r R : NumOps<&'r R, R> {
+where for<'r> &'r R : RingOps<&'r R, R> {
     pub fn new(coeffs : Vec<(TLDiagram, R)>, delta: Option<R>) -> TLMorphism<R> {
         let representative_diagram = &coeffs.first()
             .expect("Attempt to construct empty morphism")
@@ -212,7 +210,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
 }
 
 impl<R: Ring> PartialEq for TLMorphism<R>
-where for<'r> &'r R : NumOps<&'r R, R> {
+where for<'r> &'r R : RingOps<&'r R, R> {
     fn eq(&self, other : &TLMorphism<R>) -> bool {
         if self.co_domain() != other.co_domain() {
             return false;
@@ -234,8 +232,11 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     }
 }
 
+impl<R: Ring> Eq for TLMorphism<R>
+where for<'r> &'r R : RingOps<&'r R, R> {}
+
 impl<R: Ring> Add<TLMorphism<R>> for TLMorphism<R>
-where for<'r> &'r R : NumOps<&'r R, R> {
+where for<'r> &'r R : RingOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
     fn add(self, other: TLMorphism<R>) -> TLMorphism<R> {
@@ -244,7 +245,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
 }
 
 impl<R: Ring> Add<&TLMorphism<R>> for &TLMorphism<R>
-where for<'r> &'r R : NumOps<&'r R, R> {
+where for<'r> &'r R : RingOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
     fn add(self, other: &TLMorphism<R>) -> TLMorphism<R> {
@@ -257,7 +258,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
 }
 
 impl<R: Ring> Sub<TLMorphism<R>> for TLMorphism<R>
-where for<'r> &'r R : NumOps<&'r R, R> {
+where for<'r> &'r R : RingOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
     fn sub(self, other: TLMorphism<R>) -> TLMorphism<R> {
@@ -266,7 +267,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
 }
 
 impl<R: Ring> Sub<&TLMorphism<R>> for &TLMorphism<R>
-where for<'r> &'r R : NumOps<&'r R, R> {
+where for<'r> &'r R : RingOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
     fn sub(self, other: &TLMorphism<R>) -> TLMorphism<R> {
@@ -279,7 +280,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
 }
 
 impl<R: Ring> Neg for TLMorphism<R>
-where for<'r> &'r R : NumOps<&'r R, R> {
+where for<'r> &'r R : RingOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
     fn neg(self) -> TLMorphism<R> {
@@ -288,7 +289,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
 }
 
 impl<R: Ring> Mul<TLMorphism<R>> for TLMorphism<R>
-where for<'r> &'r R : NumOps<&'r R, R> {
+where for<'r> &'r R : RingOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
     fn mul(self, other: TLMorphism<R>) -> TLMorphism<R> {
@@ -297,7 +298,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
 }
 
 impl<R: Ring> Mul<&TLMorphism<R>> for &TLMorphism<R>
-where for<'r> &'r R : NumOps<&'r R, R> {
+where for<'r> &'r R : RingOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
     fn mul(self, other: &TLMorphism<R>) -> TLMorphism<R> {
@@ -339,7 +340,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
 }
 
 impl<R: Ring> BitOr<TLMorphism<R>> for TLMorphism<R>
-where for<'r> &'r R : NumOps<&'r R, R> {
+where for<'r> &'r R : RingOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
     /// Bitwise or, `a | b`, is the tensor product
@@ -349,7 +350,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
 }
 
 impl<R: Ring> BitOr<&TLMorphism<R>> for &TLMorphism<R>
-where for<'r> &'r R : NumOps<&'r R, R> {
+where for<'r> &'r R : RingOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
     /// Bitwise or, `a | b`, is the tensor product
@@ -371,7 +372,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
 }
 
 impl<R: Ring> Mul<&R> for &TLMorphism<R>
-where for<'r> &'r R : NumOps<&'r R, R> {
+where for<'r> &'r R : RingOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
     fn mul(self, other : &R) -> TLMorphism<R> {
@@ -380,7 +381,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
 }
 
 impl<R: Ring> Mul<R> for &TLMorphism<R>
-where for<'r> &'r R : NumOps<&'r R, R> {
+where for<'r> &'r R : RingOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
     fn mul(self, other : R) -> TLMorphism<R> {
@@ -390,7 +391,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
 
 
 impl<R: Ring> Mul<&R> for TLMorphism<R>
-where for<'r> &'r R : NumOps<&'r R, R> {
+where for<'r> &'r R : RingOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
     fn mul(self, other : &R) -> TLMorphism<R> {
@@ -399,7 +400,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
 }
 
 impl<R: Ring> Mul<R> for TLMorphism<R>
-where for<'r> &'r R : NumOps<&'r R, R> {
+where for<'r> &'r R : RingOps<&'r R, R> {
     type Output = TLMorphism<R>;
 
     fn mul(self, other : R) -> TLMorphism<R> {
@@ -408,7 +409,7 @@ where for<'r> &'r R : NumOps<&'r R, R> {
 }
 
 impl<R: Ring> Div<R> for TLMorphism<R>
-where for<'r> &'r R : NumOps<&'r R, R> {
+where for<'r> &'r R : RingOps<&'r R, R> + Div<&'r R, Output=R> {
     type Output = TLMorphism<R>;
 
     fn div(self, other : R) -> TLMorphism<R> {
@@ -416,8 +417,17 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     }
 }
 
+impl<R: Ring> Div<TLMorphism<R>> for TLMorphism<R>
+where for<'r> &'r R : RingOps<&'r R, R> + Div<&'r R, Output=R> {
+    type Output = TLMorphism<R>;
+
+    fn div(self, other : TLMorphism<R>) -> TLMorphism<R> {
+        unimplemented!()
+    }
+}
+
 impl<R: Ring> From<TLDiagram> for TLMorphism<R>
-where for<'r> &'r R : NumOps<&'r R, R> {
+where for<'r> &'r R : RingOps<&'r R, R> {
     fn from(diag : TLDiagram) -> TLMorphism<R> {
         TLMorphism::new(
             vec![(diag, R::one())],
@@ -426,14 +436,25 @@ where for<'r> &'r R : NumOps<&'r R, R> {
     }
 }
 
-impl<R: Ring> num::Zero for TLMorphism<R>
-where for<'r> &'r R : NumOps<&'r R, R> {
+impl<R: Ring> RingOps<TLMorphism<R>, TLMorphism<R>> for TLMorphism<R>
+where for<'r> &'r R : RingOps<&'r R, R> {}
+
+impl<R: Ring> Ring for TLMorphism<R>
+where for<'r> &'r R : RingOps<&'r R, R> {
     fn zero() -> TLMorphism<R> {
         unimplemented!()
     }
 
     fn is_zero(&self) -> bool {
         self.coeffs.values().all(|x| x.is_zero())
+    }
+
+    fn one() -> TLMorphism<R> {
+        unimplemented!()
+    }
+
+    fn is_one(&self) -> bool {
+        unimplemented!()
     }
 }
 
@@ -473,7 +494,7 @@ impl<R: Ring + Tex + Signed> Tex for TLMorphism<R> {
 }
 
 impl<R: Ring + Signed + Serialisable> Serialisable for TLMorphism<R>
-where for<'r> &'r R : NumOps<&'r R, R> {
+where for<'r> &'r R : RingOps<&'r R, R> {
     fn serialise(&self) -> String {
         let mut ans = String::new();
         for (k,v) in self.coeffs.iter() {
