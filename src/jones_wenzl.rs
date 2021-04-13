@@ -23,12 +23,11 @@ lazy_static! {
 /// the results so succesive calls will be faster
 pub fn jw(n : usize)-> TLMorphism<Fraction<Polynomial<Q>>>  {
     let x = Polynomial::gen().into();
-    for m in *JW_COMPUTED.lock().unwrap()..(n+1) {
+    for m in (*JW_COMPUTED.lock().unwrap()+1)..(n+1) {
         for d in TLDiagram::all(m,m) {
             let mut ans = Fraction::zero();
             let dp = d.turn_down(1);
             for i in dp.simple_links().into_iter() {
-                println!("{}", dp.remove_cap(i));
                 let coeff = if (i + m) % 2 == 0 {
                     Fraction::one()
                 } else {
@@ -40,11 +39,16 @@ pub fn jw(n : usize)-> TLMorphism<Fraction<Polynomial<Q>>>  {
             JW_COEFFS.lock().unwrap().insert(d,ans);
         }
     }
-    *JW_COMPUTED.lock().unwrap() = n;
-    TLMorphism::new(TLDiagram::all(n,n).iter()
+    if n > *JW_COMPUTED.lock().unwrap() {
+        *JW_COMPUTED.lock().unwrap() = n;
+    }
+    let mut ans = TLMorphism::new(TLDiagram::all(n,n).iter()
                     .map(|d| (*d, JW_COEFFS.lock().unwrap()[d].clone()))
                     .collect::<Vec<_>>(),
-                    Some(x))
+                    None);
+    ans.right_kills.extend(1..n);
+    ans.delta = Some(x);
+    ans
 }
 
 /// Construct the Jones-Wenzl element on a certain number of strands
@@ -122,11 +126,11 @@ mod test {
 
     #[test]
     fn general_jw() {
-        assert!(jw(1).is_jones_wenzl());
-        assert!(jw(2).is_jones_wenzl());
-        assert!(jw(3).is_jones_wenzl());
-        assert!(jw(4).is_jones_wenzl());
-        assert!(jw(5).is_jones_wenzl());
+        for i in 1..7 {
+            let mut jw = jw(i);
+            jw.repoint(jw.delta.clone());
+            assert!(jw.is_jones_wenzl());
+        }
         assert!((jw(4) | TLMorphism::id(1)) * jw(5) == jw(5));
         assert!(jw(6).flip() == jw(6));
         assert!((jw(4) | jw(2)).flip() == (jw(2) | jw(4)));
