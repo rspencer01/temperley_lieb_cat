@@ -2,7 +2,7 @@
 
 use num::{One, Zero};
 use std::ops::{Add, Sub, Mul, Div, Rem, Neg};
-use crate::structures::{Signed, NumOps};
+use crate::structures::{Signed, NumOps, Ring, Domain};
 use std::fmt::{Debug, Display};
 
 use crate::gcd::PartialGCD;
@@ -19,8 +19,8 @@ pub struct Fraction<T> {
     den : T
 }
 
-impl<T> Fraction<T>
-where T : PartialGCD + Signed + Zero + One,
+impl<T : Domain> Fraction<T>
+where T : PartialGCD + Signed,
       for <'r> &'r T : NumOps<&'r T, T> {
     pub fn new(n : T, d : T) -> Fraction<T> {
         if n.is_zero() {
@@ -111,8 +111,8 @@ where T : Eq,
       for <'r> &'r T: NumOps<&'r T, T> {
 }
 
-impl<T> Add for Fraction<T>
-where T : NumOps<T, T> + PartialGCD + Signed + Zero + One,
+impl<T : Domain> Add for Fraction<T>
+where T : PartialGCD + Signed,
       for <'r> &'r T: NumOps<&'r T, T> {
     type Output = Fraction<T>;
 
@@ -121,8 +121,8 @@ where T : NumOps<T, T> + PartialGCD + Signed + Zero + One,
     }
 }
 
-impl<T> Add for &Fraction<T>
-where T : NumOps<T, T> + PartialGCD + Signed + Zero + One,
+impl<T : Domain> Add for &Fraction<T>
+where T : PartialGCD + Signed,
       for <'r> &'r T: NumOps<&'r T, T> {
     type Output = Fraction<T>;
 
@@ -134,8 +134,8 @@ where T : NumOps<T, T> + PartialGCD + Signed + Zero + One,
     }
 }
 
-impl<T> Sub for Fraction<T>
-where T : NumOps<T, T> + PartialGCD + Signed + Zero + One,
+impl<T : Domain> Sub for Fraction<T>
+where T : PartialGCD + Signed,
       for <'r> &'r T: NumOps<&'r T, T> {
     type Output = Fraction<T>;
 
@@ -145,7 +145,7 @@ where T : NumOps<T, T> + PartialGCD + Signed + Zero + One,
 }
 
 impl<T> Sub for &Fraction<T>
-where T : NumOps<T, T> + PartialGCD + Signed + Zero + One,
+where T : Domain + PartialGCD + Signed,
       for <'r> &'r T: NumOps<&'r T, T> {
     type Output = Fraction<T>;
 
@@ -158,7 +158,7 @@ where T : NumOps<T, T> + PartialGCD + Signed + Zero + One,
 }
 
 impl<T> Mul for Fraction<T>
-where T : NumOps<T, T> + PartialGCD + Signed + Zero + One,
+where T : Domain + PartialGCD + Signed,
       for <'r> &'r T: NumOps<&'r T, T> {
     type Output = Fraction<T>;
 
@@ -168,7 +168,7 @@ where T : NumOps<T, T> + PartialGCD + Signed + Zero + One,
 }
 
 impl<T> Mul for &Fraction<T>
-where T : NumOps<T, T> + PartialGCD + Signed + Zero + One,
+where T : Domain + PartialGCD + Signed,
       for <'r> &'r T: NumOps<&'r T, T> {
     type Output = Fraction<T>;
 
@@ -181,7 +181,7 @@ where T : NumOps<T, T> + PartialGCD + Signed + Zero + One,
 }
 
 impl<T> Mul<&Fraction<T>> for Fraction<T>
-where T : NumOps<T, T> + PartialGCD + Signed + Zero + One,
+where T : Domain + PartialGCD + Signed,
       for <'r> &'r T: NumOps<&'r T, T> {
     type Output = Fraction<T>;
 
@@ -191,7 +191,7 @@ where T : NumOps<T, T> + PartialGCD + Signed + Zero + One,
 }
 
 impl<T> Div for Fraction<T>
-where T : NumOps<T, T> + PartialGCD + Signed + Zero + One,
+where T : Domain + PartialGCD + Signed,
       for <'r> &'r T: NumOps<&'r T, T> {
     type Output = Fraction<T>;
 
@@ -201,7 +201,7 @@ where T : NumOps<T, T> + PartialGCD + Signed + Zero + One,
 }
 
 impl<T> Div for &Fraction<T>
-where T : NumOps<T, T> + PartialGCD + Signed + Zero + One,
+where T : Domain + PartialGCD + Signed,
       for <'r> &'r T: NumOps<&'r T, T> {
     type Output = Fraction<T>;
 
@@ -244,7 +244,7 @@ where T : One {
 //}
 //
 impl<T> Mul<T> for Fraction<T>
-where T : Signed + PartialGCD + Zero + One,
+where T : Domain + Signed + PartialGCD,
       for<'r> &'r T : NumOps<&'r T, T>  {
     type Output = Self;
 
@@ -263,16 +263,16 @@ where T : Signed + PartialGCD + Zero + One,
 //    }
 //}
 
-impl<T> One for Fraction<T>
-where T : One + NumOps<T, T> + PartialGCD + Signed + Zero,
+impl<T : Domain> One for Fraction<T>
+where T : PartialGCD + Signed,
       for <'r> &'r T: NumOps<&'r T, T> {
     fn one() -> Self {
         Fraction::from(T::one())
     }
 }
 
-impl<T> Zero for Fraction<T>
-where T : Zero + NumOps<T, T> + PartialGCD + Signed + One + Eq,
+impl<T : Domain> Zero for Fraction<T>
+where T : PartialGCD + Signed,
       for <'r> &'r T: NumOps<&'r T, T> {
     fn zero() -> Self {
         Fraction::from(T::zero())
@@ -372,8 +372,8 @@ where T : Clone {
     }
 }
 
-impl<T> Serialisable for Fraction<T>
-where T : Clone + Serialisable + PartialGCD + Signed + NumOps<T,T> + One + Eq + Zero,
+impl<T : Domain> Serialisable for Fraction<T>
+where T :Serialisable + PartialGCD + Signed,
       for <'r> &'r T : NumOps<&'r T, T> {
 
     fn serialise(&self) -> String {
@@ -419,12 +419,20 @@ where T : Clone + Serialisable + PartialGCD + Signed + NumOps<T,T> + One + Eq + 
     }
 }
 
-impl<T> NumOps<Fraction<T>, Fraction<T>> for Fraction<T>
-where T : Clone + NumOps<T, T> + PartialGCD + Signed + Zero + One,
+impl<T : Domain> NumOps<Fraction<T>, Fraction<T>> for Fraction<T>
+where T : PartialGCD + Signed,
+      for<'r> &'r T: NumOps<&'r T, T> {}
+
+impl<T : Domain> Ring for Fraction<T>
+where T : PartialGCD + Signed,
+      for<'r> &'r T: NumOps<&'r T, T> {}
+
+impl<T : Domain> Domain for Fraction<T>
+where T : PartialGCD + Signed,
       for<'r> &'r T: NumOps<&'r T, T> {}
 
 impl<'a , T : 'a> NumOps<&'a Fraction<T>, Fraction<T>> for &'a Fraction<T>
-where T : Clone + NumOps<T, T> + PartialGCD + Signed + Zero + One,
+where T : Domain + PartialGCD + Signed,
       for<'r> &'r T: NumOps<&'r T, T> {}
 
 

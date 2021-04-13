@@ -5,10 +5,10 @@ use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
 use crate::fraction::Fraction;
 use crate::gcd::PartialGCD;
 use crate::serial::Serialisable;
-use crate::structures::{Signed, NumOps, Q};
+use crate::structures::{Signed, NumOps, Q, Ring, Domain};
 use crate::tex::Tex;
 
-/// A polynomial in a single variable over a _field_.
+/// A polynomial in a single variable over a _ring_.
 ///
 /// It is implemented as a vector of coefficients, where the
 /// highest coefficient is always zero.  The length is at least
@@ -16,33 +16,13 @@ use crate::tex::Tex;
 #[derive(Clone, PartialEq, Eq)]
 pub struct Polynomial<T>(Vec<T>);
 
-impl<T> Polynomial<T> {
-    pub fn degree(&self) -> usize {
-        self.0.len() - 2
-    }
-
-    pub fn hightest_term(&self) -> &T {
-        &self.0[self.0.len() - 2]
-    }
-
-    pub fn coeff(&self, i: usize) -> &T {
-        if i > self.degree() {
-            self.0.last().unwrap()
-        } else {
-            self.0.get(i).unwrap()
-        }
-    }
-}
-
-impl<T> Polynomial<T>
-where
-    T: Clone + Zero,
+impl<R : Ring> Polynomial<R>
 {
-    pub fn new<V>(in_coeffs: &[V]) -> Polynomial<T>
+    pub fn new<V>(in_coeffs: &[V]) -> Polynomial<R>
     where
-        V: Clone + Into<T>,
+        V: Clone + Into<R>,
     {
-        let mut coeffs: Vec<T> = in_coeffs.iter().map(|x| x.clone().into()).collect();
+        let mut coeffs: Vec<R> = in_coeffs.iter().map(|x| x.clone().into()).collect();
         while let Some(x) = coeffs.last() {
             if x.is_zero() {
                 coeffs.pop();
@@ -51,21 +31,37 @@ where
             }
         }
         if coeffs.is_empty() {
-            coeffs.push(T::zero());
+            coeffs.push(R::zero());
         }
-        coeffs.push(T::zero());
+        coeffs.push(R::zero());
         Polynomial(coeffs)
     }
 
+    pub fn degree(&self) -> usize {
+        self.0.len() - 2
+    }
+
+    pub fn hightest_term(&self) -> &R {
+        &self.0[self.0.len() - 2]
+    }
+
+    pub fn coeff(&self, i: usize) -> &R {
+        if i > self.degree() {
+            self.0.last().unwrap()
+        } else {
+            self.0.get(i).unwrap()
+        }
+    }
+
     fn shift(&mut self, n: usize) {
-        let mut coeffs = vec![T::zero(); n];
+        let mut coeffs = vec![R::zero(); n];
         coeffs.extend(self.0.clone().into_iter());
         self.0 = coeffs;
     }
 
-    pub fn eval<R>(&self, x: R, one: R) -> R
+    pub fn eval<S>(&self, x: S, one: S) -> S
     where
-        for<'r> R: Zero + Clone + Mul<Output = R> + Mul<&'r T, Output = R>,
+        for<'r> S: Zero + Clone + Mul<Output = S> + Mul<&'r R, Output = S>,
     {
         let mut ans = one * self.coeff(0);
         let mut xp = x.clone();
@@ -75,21 +71,13 @@ where
         }
         ans
     }
-}
 
-impl<T> Polynomial<T>
-where
-    T: Clone + Zero + One,
-{
     pub fn gen() -> Self {
-        Polynomial::new(&[T::zero(), T::one()])
+        Polynomial::new(&[R::zero(), R::one()])
     }
 }
-
-impl<T> Polynomial<T>
-where
-    T: Eq + Zero + One + Clone,
-    for<'r> &'r T: NumOps<&'r T, T>,
+impl<R : Ring> Polynomial<R> where
+    for<'r> &'r R: NumOps<&'r R, R>,
 {
     fn div_mod(&self, other: &Self) -> (Self, Self) {
         assert!(!other.is_zero(), "Dividing polynomial by zero");
@@ -106,7 +94,7 @@ where
             return (Polynomial::zero(), self.clone());
         }
         let mut rem = self.clone();
-        let mut ans = vec![T::zero(); self.degree() + 1];
+        let mut ans = vec![R::zero(); self.degree() + 1];
         for i in (other.degree()..self.degree() + 1).rev() {
             //TODO(robert) is this tautological?
             if i >= rem.degree() + 1 || rem.coeff(i).is_zero() {
@@ -124,9 +112,8 @@ where
     }
 }
 
-impl<T> Add<Polynomial<T>> for Polynomial<T>
+impl<T : Ring> Add<Polynomial<T>> for Polynomial<T>
 where
-    T: Clone + Zero,
     for<'r> &'r T: NumOps<&'r T, T>,
 {
     type Output = Polynomial<T>;
@@ -136,9 +123,8 @@ where
     }
 }
 
-impl<T> Add<&Polynomial<T>> for &Polynomial<T>
+impl<T : Ring> Add<&Polynomial<T>> for &Polynomial<T>
 where
-    T: Clone + Add + Zero,
     for<'r> &'r T: NumOps<&'r T, T>,
 {
     type Output = Polynomial<T>;
@@ -177,9 +163,8 @@ where
     }
 }
 
-impl<T> Sub<Polynomial<T>> for Polynomial<T>
+impl<T : Ring> Sub<Polynomial<T>> for Polynomial<T>
 where
-    T: Clone + Zero,
     for<'r> &'r T: NumOps<&'r T, T>,
 {
     type Output = Polynomial<T>;
@@ -189,9 +174,8 @@ where
     }
 }
 
-impl<T> Sub<&Polynomial<T>> for &Polynomial<T>
+impl<T : Ring> Sub<&Polynomial<T>> for &Polynomial<T>
 where
-    T: Clone + Add + Zero,
     for<'r> &'r T: NumOps<&'r T, T>,
 {
     type Output = Polynomial<T>;
@@ -209,9 +193,8 @@ where
     }
 }
 
-impl<T> Sub<T> for Polynomial<T>
+impl<T : Ring> Sub<T> for Polynomial<T>
 where
-    T: Clone + Zero,
     for<'r> &'r T: NumOps<&'r T, T>,
 {
     type Output = Polynomial<T>;
@@ -221,9 +204,8 @@ where
     }
 }
 
-impl<T> Mul<Polynomial<T>> for Polynomial<T>
+impl<T : Ring> Mul<Polynomial<T>> for Polynomial<T>
 where
-    T: Clone + Zero,
     for<'r> &'r T: NumOps<&'r T, T>,
 {
     type Output = Polynomial<T>;
@@ -233,9 +215,8 @@ where
     }
 }
 
-impl<T> Mul<&Polynomial<T>> for &Polynomial<T>
+impl<T : Ring> Mul<&Polynomial<T>> for &Polynomial<T>
 where
-    T: Clone + Zero,
     for<'r> &'r T: NumOps<&'r T, T>,
 {
     type Output = Polynomial<T>;
@@ -253,9 +234,8 @@ where
     }
 }
 
-impl<T> Mul<T> for Polynomial<T>
+impl<T : Ring> Mul<T> for Polynomial<T>
 where
-    T: Clone + Zero,
     for<'r> &'r T: NumOps<&'r T, T>,
 {
     type Output = Self;
@@ -265,9 +245,8 @@ where
     }
 }
 
-impl<T> Div<T> for Polynomial<T>
+impl<T : Ring> Div<T> for Polynomial<T>
 where
-    T: Clone + Zero,
     for<'r> &'r T: NumOps<&'r T, T>,
 {
     type Output = Self;
@@ -278,9 +257,8 @@ where
     }
 }
 
-impl<T> Div<Polynomial<T>> for Polynomial<T>
+impl<T : Ring> Div<Polynomial<T>> for Polynomial<T>
 where
-    T: Zero + One + Clone + Eq,
     for<'r> &'r T: NumOps<&'r T, T>,
 {
     type Output = Polynomial<T>;
@@ -290,9 +268,8 @@ where
     }
 }
 
-impl<T> Div<&Polynomial<T>> for &Polynomial<T>
+impl<T : Ring> Div<&Polynomial<T>> for &Polynomial<T>
 where
-    T: Zero + One + Clone + Eq,
     for<'r> &'r T: NumOps<&'r T, T>,
 {
     type Output = Polynomial<T>;
@@ -302,9 +279,8 @@ where
     }
 }
 
-impl<T> One for Polynomial<T>
+impl<T : Ring> One for Polynomial<T>
 where
-    T: Clone + Zero + One,
     for<'r> &'r T: NumOps<&'r T, T>,
 {
     fn one() -> Self {
@@ -312,9 +288,8 @@ where
     }
 }
 
-impl<T> Zero for Polynomial<T>
+impl<T : Ring> Zero for Polynomial<T>
 where
-    T: Clone + Zero,
     for<'r> &'r T: NumOps<&'r T, T>,
 {
     fn zero() -> Self {
@@ -327,9 +302,8 @@ where
     }
 }
 
-impl<T> Rem<Polynomial<T>> for Polynomial<T>
+impl<T : Ring> Rem<Polynomial<T>> for Polynomial<T>
 where
-    T: Zero + One + Clone + Eq,
     for<'r> &'r T: NumOps<&'r T, T>,
 {
     type Output = Polynomial<T>;
@@ -339,9 +313,8 @@ where
     }
 }
 
-impl<T> Rem<&Polynomial<T>> for &Polynomial<T>
+impl<T : Ring> Rem<&Polynomial<T>> for &Polynomial<T>
 where
-    T: Zero + One + Clone + Eq,
     for<'r> &'r T: NumOps<&'r T, T>,
 {
     type Output = Polynomial<T>;
@@ -351,9 +324,8 @@ where
     }
 }
 
-impl<T> Signed for Polynomial<T>
+impl<T : Ring + Signed> Signed for Polynomial<T>
 where
-    T: Clone + One + Zero + Signed + Eq,
     for<'r> &'r T: NumOps<&'r T, T>,
 {
     fn is_positive(&self) -> bool {
@@ -375,9 +347,8 @@ where
 
 /// Casting an element to a polynomial in that element is via
 /// the usual injection of R into R[X].
-impl<T> From<T> for Polynomial<T>
+impl<T : Ring> From<T> for Polynomial<T>
 where
-    T: Clone + Zero,
 {
     fn from(val: T) -> Polynomial<T> {
         Polynomial::new(&[val])
@@ -419,9 +390,7 @@ impl PartialGCD for Polynomial<Q> {
     }
 }
 
-impl<T> Display for Polynomial<T>
-where
-    T: One + Zero + Display + Eq,
+impl<T : Ring + Display> Display for Polynomial<T>
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let mut s = false;
@@ -445,18 +414,16 @@ where
     }
 }
 
-impl<T> Debug for Polynomial<T>
+impl<T : Ring + Display> Debug for Polynomial<T>
 where
-    T: Display + One + Zero + Clone + Eq,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self)
     }
 }
 
-impl<T> Tex for Polynomial<T>
+impl<T : Ring + Signed + Tex> Tex for Polynomial<T>
 where
-    T: Zero + One + Signed + Tex + Eq,
     for<'r> &'r T: NumOps<&'r T, T>,
 {
     fn into_tex(&self) -> String {
@@ -536,16 +503,24 @@ impl Serialisable for Polynomial<Q> {
     }
 }
 
-impl<T> NumOps<Polynomial<T>, Polynomial<T>> for Polynomial<T>
+impl<T : Ring + Signed> NumOps<Polynomial<T>, Polynomial<T>> for Polynomial<T>
 where
-    T: Clone + NumOps<T, T> + Signed + Zero + Eq + One,
     for<'r> &'r T: NumOps<&'r T, T>,
 {
 }
 
-impl<'a, T: 'a> NumOps<&'a Polynomial<T>, Polynomial<T>> for &'a Polynomial<T>
+impl<T : Ring + Signed> Ring for Polynomial<T>
 where
-    T: Clone + NumOps<T, T> + Signed + Zero + Eq + One,
+    for<'r> &'r T: NumOps<&'r T, T>,
+{}
+
+impl<T : Domain + Signed> Domain for Polynomial<T>
+where
+    for<'r> &'r T: NumOps<&'r T, T>,
+{}
+
+impl<'a, T: 'a + Ring + Signed> NumOps<&'a Polynomial<T>, Polynomial<T>> for &'a Polynomial<T>
+where
     for<'r> &'r T: NumOps<&'r T, T>,
 {
 }
