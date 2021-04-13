@@ -1,7 +1,7 @@
 /// Manually construct $JW_3$ and confirm its properties
 
-use temperley_lieb_cat::fraction::Fraction;
-use temperley_lieb_cat::poly::{quantum, Polynomial};
+use temperley_lieb_cat::Fraction;
+use temperley_lieb_cat::{quantum, Polynomial};
 use temperley_lieb_cat::{TLMorphism, TLDiagram};
 use temperley_lieb_cat::structures::{Ring, Q};
 

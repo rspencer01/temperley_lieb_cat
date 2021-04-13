@@ -1,7 +1,7 @@
 /// If $n = a + b$ and $e = JW_a \otimes JW_b$ then the algebra $e TL_n e$
 /// is semisimple and a polynomial algebra.
-use temperley_lieb_cat::fraction::Fraction;
-use temperley_lieb_cat::poly::{quantum, Polynomial};
+use temperley_lieb_cat::Fraction;
+use temperley_lieb_cat::{quantum, Polynomial};
 use temperley_lieb_cat::{TLMorphism, jw};
 use temperley_lieb_cat::structures::{Ring, Q};
 

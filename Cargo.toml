@@ -1,6 +1,6 @@
 [package]
 name = "temperley_lieb_cat"
-version = "0.0.1"
+version = "0.0.2"
 authors = ["Robert Spencer <general@robertandrewspencer.com>"]
 edition = "2018"
 

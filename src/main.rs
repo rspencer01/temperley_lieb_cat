@@ -1,10 +1,10 @@
 use std::path::Path;
-use temperley_lieb_cat::fraction::Fraction;
+use temperley_lieb_cat::Fraction;
 use temperley_lieb_cat::jw;
-use temperley_lieb_cat::poly::quantum;
-use temperley_lieb_cat::poly::Polynomial;
+use temperley_lieb_cat::quantum;
+use temperley_lieb_cat::Polynomial;
 use temperley_lieb_cat::structures::{RingOps, Q};
-use temperley_lieb_cat::tex::Tex;
+use temperley_lieb_cat::Tex;
 use temperley_lieb_cat::Serialisable;
 use temperley_lieb_cat::TLDiagram;
 use temperley_lieb_cat::TLMorphism;
