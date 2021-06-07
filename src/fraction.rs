@@ -51,6 +51,14 @@ where
     pub fn den(&self) -> &T {
         &self.den
     }
+
+    /// Force the fraction to be put in lowest terms that the type
+    /// can calculate.
+    pub fn reduce(&mut self) {
+        let g = self.num.partial_gcd(&self.den);
+        self.num = &self.num / &g;
+        self.den = &self.den / &g;
+    }
 }
 
 impl<T: GCDDomain + Signed> Fraction<T>
