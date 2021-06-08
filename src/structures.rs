@@ -2,6 +2,78 @@
 //!
 //! Really, this should be handled by the `Num` crate, but it assumes
 //! silly things like remainders for all "numbers".
+//!
+//! In general, you should not need to interface with the traits defined in
+//! this module, except to implement them on any new rings you define.
+//!
+//! ## Example
+//! Here we define a basic implementation of the field with two elements
+//! ```
+//! # use temperley_lieb_cat::structures::*;
+//! # use std::ops::*;
+//! #[derive(Clone, PartialEq, Eq)]
+//! struct GF2(bool);
+//! impl Add for GF2 {
+//!     // ...
+//! #    type Output = GF2;
+//! #    fn add(self, other : GF2) -> GF2 {
+//! #        GF2(self.0 ^ other.0)
+//! #    }
+//! }
+//! impl Mul for GF2 {
+//!     // ...
+//! #    type Output = GF2;
+//! #    fn mul(self, other : GF2) -> GF2 {
+//! #        GF2(self.0 & other.0)
+//! #    }
+//! }
+//! impl Sub for GF2 {
+//!     // ...
+//! #    type Output = GF2;
+//! #    fn sub(self, other : GF2) -> GF2 {
+//! #        GF2(self.0 ^ other.0)
+//! #    }
+//! }
+//! impl Div for GF2 {
+//!     // ...
+//! #    type Output = GF2;
+//! #    fn div(self, other : GF2) -> GF2 {
+//! #        GF2(self.0 & other.0)
+//! #    }
+//! }
+//! impl Neg for GF2 {
+//!     // ...
+//! #    type Output = GF2;
+//! #    fn neg(self) -> GF2 {
+//! #        self
+//! #    }
+//! }
+//!
+//! // Since we have defined all necessary operations, we can mark this type
+//! // with the `RingOps` makrer.
+//! impl RingOps<GF2,GF2> for GF2 {};
+//!
+//! // We need to define the units to give this a ring structure
+//! impl Ring for GF2 {
+//!     fn zero() -> Self {
+//!         GF2(false)
+//!     }
+//!     fn is_zero(&self) -> bool {
+//!         !self.0
+//!     }
+//!     fn one() -> Self {
+//!         GF2(true)
+//!     }
+//!     fn is_one(&self) -> bool {
+//!         self.0
+//!     }
+//! };
+//!
+//! // This happens to be a domain...
+//! impl Domain for GF2 {}
+//! // ...and a field
+//! impl Field for GF2 {}
+//! ```
 
 use crate::fraction::Fraction;
 use crate::gcd::PartialGCD;
@@ -57,7 +129,7 @@ pub trait Domain: Ring {}
 /// concept of division with remainder.
 ///
 /// Implimentations of [GCDDomain] do not need to be able to find
-/// the greatest common divisor, and hence only need implement [gcd::PartialGCD].
+/// the greatest common divisor, and hence only need implement [PartialGCD].
 pub trait GCDDomain: Domain + PartialGCD {}
 
 /// A marker trait to assert that this domain is a field
