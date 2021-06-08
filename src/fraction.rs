@@ -12,6 +12,44 @@ use crate::tex::Tex;
 ///
 /// Fractions, as constructed by `Fraction::new` are not always stored in lowest terms,
 /// but their denominators will always be positive.
+///
+/// ## Example
+/// ```
+/// # use temperley_lieb_cat::Fraction;
+/// let a = Fraction::new(105,9);
+/// assert_eq!(a, Fraction::new(35,3));
+/// assert_eq!(a.num() / a.den(), 11);
+/// assert!(!a.is_integral());
+///
+/// let b = Fraction::new(3,2);
+/// assert_eq!(a * b, Fraction::new(35,2));
+/// assert_eq!(a / b, Fraction::new(70,9));
+/// assert_eq!(a + b, Fraction::new(79,6));
+/// assert_eq!(a - b, Fraction::new(61,6));
+/// ```
+///
+/// ## `Copy` and `Clone`
+/// The type `Fraction<T>` is `Copy` (resp. `Clone`) if `T` is.  Thus if `T` is not `Copy`,
+/// arithmetic operations such as `+` will consume both arguments.
+/// ```
+/// # use temperley_lieb_cat::Fraction;
+/// # let a = Fraction::new(1,1);
+/// # let b = Fraction::new(1,1);
+/// // `a` and `b` are non-Copy Fractions
+/// let c = a + b;
+/// // let d = a * b;  <- This will result in an error as `a` and `b` are consumed in the line above.
+/// // let e = c + c;  <- This will result in an error as `c` is consumed in the second argument to add
+/// ```
+/// To avoid this, you can perform arithmetic by reference:
+/// ```
+/// # use temperley_lieb_cat::Fraction;
+/// # let a = Fraction::new(1,1);
+/// # let b = Fraction::new(1,1);
+/// // `a` and `b` are non-Copy Fractions
+/// let c = &a + &b;
+/// let d = &a * &b;
+/// let e = &c + &c;
+/// ```
 #[derive(Copy, Clone, Debug)]
 pub struct Fraction<T: Domain> {
     num: T,
