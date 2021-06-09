@@ -21,3 +21,4 @@ pub use temperley_diagram::TLDiagram;
 pub use tex::Tex;
 
 pub mod structures;
+pub mod digits;

@@ -2,6 +2,7 @@ use crate::fraction::Fraction;
 use crate::poly::{quantum, Polynomial};
 use crate::structures::{Ring, Q};
 use crate::temperley::TLMorphism;
+use crate::digits::l_p_adic;
 use crate::temperley_diagram::TLDiagram;
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -71,15 +72,6 @@ pub fn jw_old(n: usize) -> TLMorphism<Fraction<Polynomial<Q>>> {
     jw
 }
 
-fn l_p_adic_digits(n: usize, l: usize, p: usize) -> Vec<usize> {
-    let mut ans = Vec::new();
-    if n > 0 {
-        ans.push(n % l);
-        ans.extend(l_p_adic_digits(n / l, p, p));
-    }
-    ans
-}
-
 fn jw2lp(n: usize, l: usize, p: usize) -> TLMorphism<Fraction<Polynomial<Q>>> {
     let jwn = l_p_reduce_mod(jw(n), l, p);
     let mut t = TLMorphism::id(2 * n + 1) * Fraction::zero();
@@ -116,10 +108,10 @@ fn l_p_reduce_mod(
 }
 
 pub fn jwlp(n: usize, l: usize, p: usize) -> TLMorphism<Fraction<Polynomial<Q>>> {
-    let digits = l_p_adic_digits(n + 1, l, p);
+    let digits = l_p_adic(n as u128 + 1, l as u128, p as u128);
     if digits.iter().filter(|x| **x != 0).count() == 1 {
         // We are eve
-        if digits.iter().sum::<usize>() == 2 {
+        if digits.iter().sum::<i128>() == 2 {
             jw2lp((n + 1) / 2 - 1, l, p)
         } else {
             l_p_reduce_mod(jw(n), l, p)
@@ -208,16 +200,9 @@ mod test {
     }
 
     #[test]
-    fn p_adic() {
-        assert_eq!(
-            vec![2, 3, 0, 1usize],
-            l_p_adic_digits(2 + 3 * 5 + 1 * 125, 5, 5)
-        );
-    }
-
-    #[test]
     fn morrison() {
         assert_eq!(jw(3), jw_old(3));
+        assert_eq!(jw(5), jw_old(5));
         assert_eq!(jw(7), jw_old(7));
     }
 }
