@@ -58,6 +58,80 @@ pub fn l_p_adic(n: u128, l: u128, p: u128) -> Vec<i128> {
     }
 }
 
+/// Calculates the support (cousins) of $n$ in $(\ell,p)$ digits
+///
+/// The support of $n$ is the set
+/// $$
+/// \\big\\{[n\_r, \pm n\_{r-1},\ldots, \pm n\_0]\_{p, \ell} - 1\\big\\}
+/// $$
+/// where $n + 1 = [n_r, n_{r-1},\ldots, n_0]_{p, \ell}$.
+///
+/// See also [`support_digits`] for a function to obtain the individual
+/// elements by their $(\ell, p)$-digits.
+///
+/// ### Example
+///
+/// ```rust
+/// # use temperley_lieb_cat::digits::support;
+/// assert_eq!(
+///     support(10, 2, 3),
+///     [10, 8, 2, 0]
+/// );
+/// ```
+pub fn support(n: u128, l: u128, p: u128) -> Vec<u128> {
+    support_digits(n, l, p)
+        .iter()
+        .map(|x| anti_l_p_adic(x, l, p) as u128 - 1)
+        .collect::<Vec<_>>()
+}
+
+/// Calculates the digits of the support (cousins) of $n$ in $(\ell,p)$ digits
+///
+/// The support of $n$ is the set
+/// $$
+/// \\big\\{[n\_r, \pm n\_{r-1},\ldots, \pm n\_0]\_{p, \ell} - 1\\big\\}
+/// $$
+/// where $n + 1 = [n_r, n_{r-1},\ldots, n_0]_{p, \ell}$.  This function returns
+/// a list of the $(\ell, p)$ digits of the support elements.
+///
+/// See also [`support`] for a function to obtain the numerical elements.
+///
+/// ### Note
+/// The digits are presented from least to most significant digit.  That is, the
+/// first element is $\pm n\_0$, the second $\pm n\_1$ and so on.
+///
+/// ### Example
+///
+/// ```rust
+/// # use temperley_lieb_cat::digits::support_digits;
+/// assert_eq!(
+///     support_digits(9, 2, 3),
+///     [[0,2,1], [0,-2,1]]
+/// );
+/// ```
+pub fn support_digits(n: u128, l: u128, p: u128) -> Vec<Vec<i128>> {
+    let mut ans = vec![];
+    let digs = l_p_adic(n + 1, l, p);
+    let indices: Vec<usize> = digs
+        .iter()
+        .enumerate()
+        .take(digs.len() - 1)
+        .filter(|(_, d)| **d != 0)
+        .map(|(i, _)| i)
+        .collect();
+
+    for t in 0..(1 << indices.len()) {
+        let mut these_digs = digs.clone();
+        for i in 0..indices.len() {
+            if t & (1 << i) != 0 {
+                these_digs[indices[i]] *= -1;
+            }
+        }
+        ans.push(these_digs);
+    }
+    ans
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -110,5 +184,27 @@ mod test {
         assert_eq!(anti_l_p_adic(&[0, 0, 1], 5, 2), 10);
 
         assert_eq!(anti_l_p_adic(&[1, 0, 5, 2], 2, 10), 501);
+    }
+
+    #[test]
+    fn test_support() {
+        assert_eq!(
+            support(100, 2, 3),
+            [100, 98, 92, 90, 88, 86, 80, 78, 28, 26, 20, 18, 16, 14, 8, 6]
+        );
+        for p in [2, 3, 5] {
+            for l in 2..10 {
+                assert_eq!(support(0, l, p), [0]);
+                assert_eq!(support(l - 1, l, p), [l - 1]);
+                assert_eq!(
+                    support((p - 1) * l * p * p - 1, l, p),
+                    [(p - 1) * l * p * p - 1]
+                );
+                assert_eq!(
+                    support((p - 1) * l * p * p, l, p),
+                    [(p - 1) * l * p * p, (p - 1) * l * p * p - 2]
+                );
+            }
+        }
     }
 }
