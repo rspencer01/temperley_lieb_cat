@@ -16,6 +16,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: Install TeXlive
+      run: sudo apt-get install texlive texlive-publishers texlive-science
     - name: Build
       run: cargo build --verbose --release
     - name: Run tests
