@@ -1,4 +1,15 @@
 //! Operations for dealing with expanding numbers in terms of their digits
+//!
+//! The representation theory of the Temperley-Lieb category is closely tied
+//! to the two torsion parameters, $p$ and $\ell$, of the underlying ring.
+//! This module contains various helper functions for dealing with numbers in
+//! their $(\ell, p)$-adic expansions.
+//!
+//! Let $p^{(i)} = \ell p^{i-1}$ where we understand $p^{(0)} = 1$.
+//! Then the $(\ell, p)$-adic expansion of $n$ is written
+//! $n = [n\_r, \ldots, n\_0]\_{p, \ell}$ where
+//! $n = \sum_{i = 0}^{r} n\_ip^{(i)}$ and $0\le n_0 < \ell$ and 
+//! $0 \le n_i < p$ for $0< i$.
 
 /// Turn a list of digits mod `p` into a number
 ///
