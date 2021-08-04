@@ -24,3 +24,6 @@ path = "src/main.rs"
 [lib]
 name = "temperley_lieb_cat"
 path = "src/lib.rs"
+
+[package.metadata.docs.rs]
+rustdoc-args = [ "--html-in-header", ".doc/katex-header.html" ]
