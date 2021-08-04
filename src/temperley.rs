@@ -166,12 +166,20 @@ where
 
     /// Check if this is the Jones Wenzl idempotent
     ///
-    /// The Jones-Wenzl idempotent can be characterised by
-    ///   * Being a map n -> n
-    ///   * Having unit coefficient for the identity diagram
-    ///   * Being killed by all caps on the right
+    /// The Jones-Wenzl idempotent can be characterised by being
+    /// the unique
+    ///   * Temperley-Lieb morphism $\underline n \to \underline n$
+    ///   * with unit coefficient for the identity diagram
+    ///   * that is killed by all caps on the right.
+    ///
     /// The other features (idempotent, invariant under involution)
     /// follow from these.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # use temperley_lieb_cat::*;
+    /// assert!(jw(3).is_jones_wenzl());
+    /// ```
     pub fn is_jones_wenzl(&self) -> bool {
         self.domain == self.co_domain
             && (self
@@ -229,6 +237,21 @@ where
     pub fn trace(&self) -> TLMorphism<R> {
         let u = TLMorphism::from(TLDiagram::cup(self.domain() + 1, self.domain()));
         u * self.turn_down(1)
+    }
+
+    /// Returns the identity coefficient of this morphism
+    ///
+    /// ### Example
+    /// ```rust
+    /// # use temperley_lieb_cat::*;
+    /// # use temperley_lieb_cat::structures::*;
+    /// assert!(jw(4).identity_coefficient().is_one());
+    /// ```
+    pub fn identity_coefficient(&self) -> R {
+        self.coeffs
+            .get(&TLDiagram::id(self.domain))
+            .unwrap_or(&R::zero())
+            .clone()
     }
 }
 
