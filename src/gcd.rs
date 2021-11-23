@@ -25,24 +25,6 @@ impl<T: GCD> PartialGCD for T {
     }
 }
 
-impl GCD for i128 {
-    fn gcd(&self, other: &i128) -> i128 {
-        let mut a = self.abs();
-        let mut b = other.abs();
-        if a < b {
-            let c = b;
-            b = a;
-            a = c;
-        }
-        while b != 0 {
-            let c = a % b;
-            a = b;
-            b = c;
-        }
-        a
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

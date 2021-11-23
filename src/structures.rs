@@ -76,7 +76,7 @@
 //! ```
 
 use crate::fraction::Fraction;
-use crate::gcd::PartialGCD;
+use crate::gcd::{GCD, PartialGCD};
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
 /// Rational numbers to 128 bits of accuracy
@@ -137,33 +137,58 @@ pub trait GCDDomain: Domain + PartialGCD {}
 /// Fields have well defined inverses.
 pub trait Field: Domain {}
 
-impl RingOps<i128, i128> for i128 {}
-impl Signed for i128 {
-    fn is_positive(&self) -> bool {
-        *self > 0
-    }
-    fn is_negative(&self) -> bool {
-        *self < 0
-    }
-    fn abs(&self) -> Self {
-        i128::abs(*self)
-    }
-}
-impl Ring for i128 {
-    fn zero() -> Self {
-        0
-    }
-    fn is_zero(&self) -> bool {
-        *self == 0
-    }
-    fn one() -> Self {
-        1
-    }
-    fn is_one(&self) -> bool {
-        *self == 1
-    }
-}
-impl Domain for i128 {}
-impl GCDDomain for i128 {}
+macro_rules! ring_ops_for_integers_impl {
+    ($($t:ty)*) => {$(
+        impl RingOps<$t, $t> for $t {}
+        impl RingOps<&$t, $t> for &$t {}
 
-impl RingOps<&i128, i128> for &i128 {}
+        impl Signed for $t {
+            fn is_positive(&self) -> bool {
+                *self > 0
+            }
+            fn is_negative(&self) -> bool {
+                *self < 0
+            }
+            fn abs(&self) -> Self {
+                Self::abs(*self)
+            }
+        }
+
+        impl Ring for $t {
+            fn zero() -> Self {
+                0
+            }
+            fn is_zero(&self) -> bool {
+                *self == 0
+            }
+            fn one() -> Self {
+                1
+            }
+            fn is_one(&self) -> bool {
+                *self == 1
+            }
+        }
+
+        impl GCD for $t {
+            fn gcd(&self, other: &Self) -> Self {
+                let mut a = self.abs();
+                let mut b = other.abs();
+                if a < b {
+                    let c = b;
+                    b = a;
+                    a = c;
+                }
+                while b != 0 {
+                    let c = a % b;
+                    a = b;
+                    b = c;
+                }
+                a
+            }
+        }
+
+        impl Domain for $t {}
+        impl GCDDomain for $t {}
+    )*}
+}
+ring_ops_for_integers_impl![i128 i64 i32 isize];
