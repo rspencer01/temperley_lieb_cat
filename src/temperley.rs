@@ -489,7 +489,7 @@ where
 {
     type Output = TLMorphism<R>;
 
-    fn div(self, other: TLMorphism<R>) -> TLMorphism<R> {
+    fn div(self, _other: TLMorphism<R>) -> TLMorphism<R> {
         unimplemented!()
     }
 }

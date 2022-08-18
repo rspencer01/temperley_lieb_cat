@@ -60,7 +60,9 @@ pub fn jw(n: usize) -> TLMorphism<Fraction<Polynomial<Q>>> {
 ///
 /// This function computes the idempotents using the usual iterative
 /// form.
-pub fn jw_old(n: usize) -> TLMorphism<Fraction<Polynomial<Q>>> {
+///
+/// This function is private and deprecated. Use [`jw`] instead.
+fn jw_old(n: usize) -> TLMorphism<Fraction<Polynomial<Q>>> {
     let mut jw = TLMorphism::id(1);
     jw.repoint(Some(Polynomial::gen().into()));
     for i in 1..n {
@@ -102,7 +104,7 @@ fn reduce_mod(
 fn l_p_reduce_mod(
     a: TLMorphism<Fraction<Polynomial<Q>>>,
     l: usize,
-    p: usize,
+    _p: usize,
 ) -> TLMorphism<Fraction<Polynomial<Q>>> {
     reduce_mod(a, quantum(l))
 }
@@ -184,7 +186,7 @@ mod test {
         let jw7 = &jw6 * &TLMorphism::u(7, 6);
         let jw7 = &jw7 * &jw6;
         //        println!("{}", jw7.serialise());
-        let jw7 = jw7 * Fraction::new(quantum(6), quantum(7));
+        let _jw7 = jw7 * Fraction::new(quantum(6), quantum(7));
         //        println!("{}", jw7.serialise());
         //        let mut t = TLMorphism::id(9) * Fraction::zero();
         //        for i in -4..5 {
