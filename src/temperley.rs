@@ -4,6 +4,7 @@ use crate::tex::Tex;
 use crate::TLDiagram;
 use std::collections::HashMap;
 use std::ops::{Add, BitOr, Div, Mul, Neg, Sub};
+use std::fmt::Write as _;
 
 #[derive(Clone, Debug)]
 pub struct TLMorphism<R: Ring> {
@@ -19,7 +20,7 @@ where
     for<'r> &'r R: RingOps<&'r R, R>,
 {
     pub fn new(coeffs: Vec<(TLDiagram, R)>, delta: Option<R>) -> TLMorphism<R> {
-        let representative_diagram = &coeffs
+        let representative_diagram = coeffs
             .first()
             .expect("Attempt to construct empty morphism")
             .0;
@@ -38,7 +39,7 @@ where
             }
         }
         if coeffs_map.is_empty() {
-            coeffs_map.insert(representative_diagram.clone(), R::zero());
+            coeffs_map.insert(representative_diagram, R::zero());
         }
 
         let mut right_kills = Vec::new();
@@ -300,7 +301,7 @@ where
     type Output = TLMorphism<R>;
 
     fn add(self, other: &TLMorphism<R>) -> TLMorphism<R> {
-        let delta = self.ring_point(&other);
+        let delta = self.ring_point(other);
         let mut ans = Vec::new();
         ans.extend(self.coeffs.iter().map(|(k, v)| (*k, v.clone())));
         ans.extend(other.coeffs.iter().map(|(k, v)| (*k, v.clone())));
@@ -326,7 +327,7 @@ where
     type Output = TLMorphism<R>;
 
     fn sub(self, other: &TLMorphism<R>) -> TLMorphism<R> {
-        let delta = self.ring_point(&other);
+        let delta = self.ring_point(other);
         let mut ans = Vec::new();
         ans.extend(self.coeffs.iter().map(|(k, v)| (*k, v.clone())));
         ans.extend(other.coeffs.iter().map(|(k, v)| (*k, -v.clone())));
@@ -365,7 +366,7 @@ where
     fn mul(self, other: &TLMorphism<R>) -> TLMorphism<R> {
         let mut ans_vec = Vec::new();
         let delta = self
-            .ring_point(&other)
+            .ring_point(other)
             .expect("Require ring point to multiply morphisms");
         let mut pows = vec![R::one(); (self.domain() + self.co_domain()) / 2 + 1];
         for i in 1..pows.len() {
@@ -573,19 +574,18 @@ where
     fn serialise(&self) -> String {
         let mut ans = String::new();
         for (k, v) in self.coeffs.iter() {
-            ans += &format!("{}|{}", k.serialise(), v.serialise());
-            ans += "\n";
+            let _ = writeln!(ans,"{}|{}", k.serialise(), v.serialise());
         }
         ans
     }
 
     fn deserialise(inpt: &str) -> Self {
         let mut ans = Vec::new();
-        for line in inpt.split("\n") {
-            if line.len() == 0 {
+        for line in inpt.split('\n') {
+            if line.is_empty() {
                 break;
             }
-            let parts: Vec<_> = line.split("|").collect();
+            let parts: Vec<_> = line.split('|').collect();
             assert!(parts.len() == 2, "Cannot parse TLMorphism");
             ans.push((TLDiagram::deserialise(parts[0]), R::deserialise(parts[1])));
         }

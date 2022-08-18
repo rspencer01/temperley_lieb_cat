@@ -68,15 +68,13 @@ where
             }
         } else if d.is_negative() {
             Fraction::new(-n, -d)
+        } else if n.is_small() && d.is_small() {
+            Fraction { num: n, den: d }
         } else {
-            if n.is_small() && d.is_small() {
-                Fraction { num: n, den: d }
-            } else {
-                let g = n.partial_gcd(&d);
-                let num = &n / &g;
-                let den = &d / &g;
-                Fraction { num, den }
-            }
+            let g = n.partial_gcd(&d);
+            let num = &n / &g;
+            let den = &d / &g;
+            Fraction { num, den }
         }
     }
 

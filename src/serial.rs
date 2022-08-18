@@ -11,7 +11,7 @@ pub trait Serialisable {
     fn to_file(&self, path: &Path) {
         File::create(path)
             .expect("Cannot open file for writing")
-            .write(self.serialise().as_bytes())
+            .write_all(self.serialise().as_bytes())
             .expect("Could not write object");
     }
 
@@ -70,16 +70,16 @@ where
 
     fn deserialise(inpt: &str) -> Self {
         assert!(
-            inpt.chars().nth(0) == Some('['),
+            inpt.starts_with('['),
             "No open bracket in vec parsing"
         );
         assert!(
-            inpt.chars().nth(inpt.len() - 1) == Some(']'),
+            inpt.ends_with(']'),
             "No close bracket in vec parsing"
         );
         let mut ans = Vec::new();
-        for item in inpt[1..inpt.len() - 1].split(",") {
-            if item.len() == 0 {
+        for item in inpt[1..inpt.len() - 1].split(',') {
+            if item.is_empty() {
                 break;
             }
             ans.push(T::deserialise(item));

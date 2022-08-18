@@ -47,7 +47,7 @@ pub fn p_adic(n: u128, p: u128) -> Vec<i128> {
 ///
 /// The digits are not constrained to and can be arbitrary integers
 pub fn anti_l_p_adic(digs: &[i128], l: u128, p: u128) -> i128 {
-    if digs.len() == 0 {
+    if digs.is_empty() {
         0
     } else {
         digs[0] + l as i128 * anti_p_adic(&digs[1..], p)

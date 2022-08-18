@@ -4,6 +4,7 @@ extern crate partitions;
 use crate::serial::Serialisable;
 use crate::tex::Tex;
 use itertools::Itertools;
+use std::fmt::Write as _;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TLDiagram {
@@ -104,7 +105,7 @@ impl TLDiagram {
     }
 
     pub fn big_cap(n: usize, i: usize, j: usize) -> TLDiagram {
-        TLDiagram::new(n, n - 2 * j, (1 << (i + j + 1)) - (1 << i + 1), 0)
+        TLDiagram::new(n, n - 2 * j, (1 << (i + j + 1)) - (1 << (i + 1)), 0)
     }
 
     pub fn id(n: usize) -> TLDiagram {
@@ -115,8 +116,8 @@ impl TLDiagram {
         TLDiagram::new(
             self.domain + 1,
             self.co_domain + 1,
-            self.left_tab.clone(),
-            self.right_tab.clone(),
+            self.left_tab,
+            self.right_tab,
         )
     }
 
@@ -183,13 +184,13 @@ impl TLDiagram {
 
     pub fn turn_down(&self, i: isize) -> TLDiagram {
         if i == 0 {
-            return self.clone();
+            return *self;
         }
         if i > 0 {
             let i = i as usize;
             assert!(self.co_domain >= i, "Cannot turn element");
-            let mut left_tab = self.left_tab.clone();
-            let mut right_tab = self.right_tab.clone();
+            let mut left_tab = self.left_tab;
+            let mut right_tab = self.right_tab;
             for j in 0..i {
                 if right_tab & (1 << (self.co_domain - j)) != 0 {
                     right_tab ^= 1 << (self.co_domain - j);
@@ -199,7 +200,7 @@ impl TLDiagram {
             }
             TLDiagram::new(self.domain + i, self.co_domain - i, left_tab, right_tab)
         } else {
-            self.clone().involute().turn_down(-i).involute()
+            self.involute().turn_down(-i).involute()
         }
     }
 
@@ -209,14 +210,10 @@ impl TLDiagram {
 
     /// Rotate the diagram anticlockwise
     pub fn rotate(&self, i: isize) -> TLDiagram {
-        if i == 0 {
-            self.clone()
-        } else {
-            if i > 0 {
-                self.turn_up(1).turn_down(-1).rotate(i - 1)
-            } else {
-                self.turn_up(1).turn_down(-1).rotate(i + 1)
-            }
+        match i {
+            0 => *self,
+            i if i > 0 => self.turn_up(1).turn_down(-1).rotate(i - 1),
+            _ => self.turn_up(1).turn_down(-1).rotate(i + 1),
         }
     }
 }
@@ -345,26 +342,29 @@ impl Tex for TLDiagram {
     fn into_tex(&self) -> String {
         let width = self.domain().max(self.co_domain()) / 2;
         let mut ans = String::from("\\vcenter{\\hbox{\\begin{tikzpicture}[scale=0.3]");
-        ans += &format!(
+        let _ = write!(
+            ans,
             "\\draw[thin] (0,.5) -- (0, {});",
             self.domain() as f32 + 0.5
         );
-        ans += &format!(
+        let _ = write!(
+            ans,
             "\\draw[thin] ({0},.5) -- ({0}, {1});",
             width,
             self.co_domain() as f32 + 0.5
         );
         for i in 1..self.domain() + 1 {
-            ans += &format!("\\fill (0,{}) circle(0.1);", i);
+            let _ = write!(ans, "\\fill (0,{}) circle(0.1);", i);
         }
         for i in 1..self.co_domain() + 1 {
-            ans += &format!("\\fill ({0},{1}) circle(0.1);", width, i);
+            let _ = write!(ans, "\\fill ({0},{1}) circle(0.1);", width, i);
         }
         let mut left_stack = Vec::new();
         let mut right_stack = Vec::new();
         for i in 1..self.domain + 1 {
             if self.left_tab & (1 << i) != 0 {
-                ans += &format!(
+                let _ = write!(
+                    ans,
                     "\\draw[very thick] (0,{}) edge[out=0, in=0] (0,{});",
                     self.domain - left_stack.pop().unwrap() + 1,
                     self.domain - i + 1
@@ -375,7 +375,8 @@ impl Tex for TLDiagram {
         }
         for i in 1..self.co_domain + 1 {
             if self.right_tab & (1 << i) != 0 {
-                ans += &format!(
+                let _ = write!(
+                    ans,
                     "\\draw[very thick] ({0},{1}) edge[out=180, in=180] ({0},{2});",
                     width,
                     self.co_domain - right_stack.pop().unwrap() + 1,
@@ -386,7 +387,8 @@ impl Tex for TLDiagram {
             }
         }
         for i in 0..left_stack.len() {
-            ans += &format!(
+            let _ = write!(
+                ans,
                 "\\draw[very thick] (0,{1}) edge[out=0, in=180] ({0},{2});",
                 width,
                 self.domain() - left_stack[i] + 1,
@@ -414,8 +416,8 @@ impl Serialisable for TLDiagram {
     }
 
     fn deserialise(inpt: &str) -> Self {
-        assert!(inpt.chars().nth(0) == Some('<'));
-        assert!(inpt.chars().nth(inpt.len() - 1) == Some('>'));
+        assert!(inpt.starts_with('<'));
+        assert!(inpt.ends_with('>'));
         let mut items = inpt[1..inpt.len() - 1].split('.');
         TLDiagram {
             domain: usize::deserialise(items.next().unwrap()),

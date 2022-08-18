@@ -84,7 +84,7 @@ fn jw2lp(n: usize, l: usize, p: usize) -> TLMorphism<Fraction<Polynomial<Q>>> {
         } else {
             -Fraction::one()
         };
-        t = t + (jwn.turn_down(i) | TLMorphism::id(1) | jwn.turn_up(-i) * coeff);
+        t = t + (jwn.turn_down(i) | TLMorphism::id(1) | jwn.turn_up(-i)) * coeff;
     }
     t
 }

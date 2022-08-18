@@ -97,7 +97,7 @@ where
         let mut ans = vec![R::zero(); self.degree() + 1];
         for i in (other.degree()..self.degree() + 1).rev() {
             //TODO(robert) is this tautological?
-            if i >= rem.degree() + 1 || rem.coeff(i).is_zero() {
+            if i > rem.degree() || rem.coeff(i).is_zero() {
                 continue;
             }
             // Because T is guaranteed to be a field, this gives no remainder
@@ -354,7 +354,7 @@ impl PartialGCD for Polynomial<Q> {
                 re = re.clone() / c.clone();
             }
             let sub = other.partial_gcd(&re);
-            sub.clone() / sub.clone().hightest_term().clone()
+            sub.clone() / sub.hightest_term().clone()
         }
     }
 
@@ -375,10 +375,14 @@ impl<T: Ring + Display> Display for Polynomial<T> {
                 if !self.coeff(i).is_one() || i == 0 {
                     write!(f, "{}", self.coeff(i))?;
                 }
-                if i > 1 {
-                    write!(f, "X^{}", i)?;
-                } else if i == 1 {
-                    write!(f, "X")?;
+                match i {
+                    0 => {}
+                    1 => {
+                        write!(f, "X")?;
+                    }
+                    _ => {
+                        write!(f, "X^{}", i)?;
+                    }
                 }
             }
         }
@@ -401,10 +405,8 @@ where
         let mut s = false;
         for i in 0..self.degree().max(0) + 1 {
             if !self.coeff(i).is_zero() || (i == 0 && self.degree() == 0) {
-                if s {
-                    if self.coeff(i).is_positive() {
-                        ans += " + ";
-                    }
+                if s && self.coeff(i).is_positive() {
+                    ans += " + ";
                 }
                 s = true;
                 if !self.coeff(i).abs().is_one() || i == 0 {
@@ -419,10 +421,10 @@ where
                 if self.coeff(i).is_negative() && (-self.coeff(i)).is_one() && i > 0 {
                     ans += " - ";
                 }
-                if i > 1 {
-                    ans += &format!("X^{{ {} }}", i);
-                } else if i == 1 {
-                    ans += "X";
+                ans += &match i {
+                    0 => "".into(),
+                    1 => "X".into(),
+                    _ => format!("X^{{ {} }}", i),
                 }
             }
         }
@@ -445,10 +447,10 @@ pub fn quantum<I: ToPrimitive>(n: I) -> Polynomial<Q> {
     fn choose(n: i128, r: i128) -> i128 {
         let mut ans = 1;
         for i in n - r + 1..n + 1 {
-            ans = ans * i;
+            ans *= i;
         }
         for i in 1..r + 1 {
-            ans = ans / i;
+            ans /= i;
         }
         ans
     }

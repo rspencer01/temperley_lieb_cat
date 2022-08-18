@@ -174,9 +174,7 @@ macro_rules! ring_ops_for_integers_impl {
                 let mut a = self.abs();
                 let mut b = other.abs();
                 if a < b {
-                    let c = b;
-                    b = a;
-                    a = c;
+                    std::mem::swap(&mut a, &mut b);
                 }
                 while b != 0 {
                     let c = a % b;
